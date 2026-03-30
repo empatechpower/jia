@@ -78,7 +78,7 @@ export default function HeaderAuth({
             className="hover:opacity-80 transition"
             onClick={onHomeClick}
           >
-            <Logo variant="light" />
+            <Logo variant="light" className="w-[80px] h-[80px]" />
           </button>
 
           {/* Desktop nav */}

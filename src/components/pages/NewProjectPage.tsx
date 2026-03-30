@@ -57,7 +57,7 @@ function RadioGroup({ options, value, onChange, label }: RadioGroupProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NewProjectPage() {
-  const { setCurrentPage, setNumberOfRooms, setPropertyInfo, setCurrentPage: nav } = useApp();
+  const { setCurrentPage, setNumberOfRooms, setPropertyInfo } = useApp();
 
   const [propertyType, setPropertyType] = useState<string>("BTO");
   const [isOwnProperty, setIsOwnProperty] = useState(true);
@@ -70,10 +70,12 @@ export default function NewProjectPage() {
 
   function validate() {
     const e: Record<string, string> = {};
-    if (!zipCode.match(/^\d{6}$/)) e.zipCode = "Please enter a valid 6-digit postal code.";
+    if (!zipCode.match(/^\d{6}$/))
+      e.zipCode = "Please enter a valid 6-digit postal code.";
     if (!unit) e.unit = "Unit number is required.";
     const n = parseInt(numRooms, 10);
-    if (isNaN(n) || n < 1 || n > 10) e.numRooms = "Number of rooms must be between 1 and 10.";
+    if (isNaN(n) || n < 1 || n > 10)
+      e.numRooms = "Number of rooms must be between 1 and 10.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -108,8 +110,18 @@ export default function NewProjectPage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage("landing")}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
           </svg>
           <span className="font-['Poppins'] text-sm">Back</span>
         </button>
@@ -132,7 +144,8 @@ export default function NewProjectPage() {
           Tell us about your property
         </h2>
         <p className="font-['DM_Sans'] text-[#666] text-base mb-8">
-          We'll use this information to tailor our recommendations for your space.
+          We'll use this information to tailor our recommendations for your
+          space.
         </p>
 
         <form className="space-y-6" noValidate onSubmit={handleSubmit}>
@@ -243,7 +256,11 @@ export default function NewProjectPage() {
               <span className="text-[#999] font-normal">(optional)</span>
             </label>
             <label className="flex items-center gap-3 w-full bg-[#ececec] rounded-lg px-4 py-3 cursor-pointer hover:bg-[#e0e0e0] transition">
-              <svg className="w-5 h-5 text-[#878787]" fill="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5 text-[#878787]"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" />
               </svg>
               <span className="font-['Poppins'] text-sm text-[#878787]">

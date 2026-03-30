@@ -12,7 +12,6 @@ export default function Header() {
     userEmail,
     cartItemCount,
     setCurrentPage,
-    previousPage,
     navigateTo,
     handleLogout,
   } = useApp();
@@ -36,10 +35,5 @@ export default function Header() {
     );
   }
 
-  return (
-    <HeaderPublic
-      {...nav}
-      onLoginClick={() => setCurrentPage("login")}
-    />
-  );
+  return <HeaderPublic {...nav} onLoginClick={() => setCurrentPage("login")} />;
 }

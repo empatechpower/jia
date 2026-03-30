@@ -1,14 +1,10 @@
-/**
- * RoomSelectionPage stub
- * Wire up original JSX here; replace prop callbacks with useApp() calls.
- */
 import { useApp } from "@/context/AppContext";
 import { CartIconWithBadge } from "@/assets/icons";
 
 export default function RoomSelectionPage() {
   const {
     rooms,
-    setRooms,
+
     cartItemCount,
     setCurrentPage,
     setSelectedRoom,
@@ -17,7 +13,7 @@ export default function RoomSelectionPage() {
     showSuccessMessage,
     setShowSuccessMessage,
     cartItems,
-    handleUpdateRoomName,
+
     selectedArea,
   } = useApp();
 
@@ -34,12 +30,24 @@ export default function RoomSelectionPage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage("areaSelection")}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
           </svg>
           <span className="font-['Poppins'] text-sm">Back</span>
         </button>
-        <h1 className="font-['Poppins'] font-semibold text-white text-base">Select Room</h1>
+        <h1 className="font-['Poppins'] font-semibold text-white text-base">
+          Select Room
+        </h1>
         <button
           aria-label={`Cart, ${cartItemCount} items`}
           className="p-2 hover:opacity-80 transition"
@@ -65,7 +73,10 @@ export default function RoomSelectionPage() {
         </h2>
         <p className="font-['DM_Sans'] text-[#666] text-base mb-8">
           Choose which room you're configuring for{" "}
-          <span className="capitalize font-medium text-[#332e28]">{selectedArea}</span>.
+          <span className="capitalize font-medium text-[#332e28]">
+            {selectedArea}
+          </span>
+          .
         </p>
 
         <ul className="space-y-3">
@@ -87,8 +98,18 @@ export default function RoomSelectionPage() {
                       </p>
                     )}
                   </div>
-                  <svg className="w-5 h-5 text-gray-400 group-hover:text-[#332e28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+                  <svg
+                    className="w-5 h-5 text-gray-400 group-hover:text-[#332e28]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M9 18l6-6-6-6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                    />
                   </svg>
                 </button>
               </li>

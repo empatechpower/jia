@@ -2,10 +2,10 @@ import { useState } from "react";
 
 // ─── Image URL constants (replace with real assets or env vars) ───────────────
 const IMG = {
-  modularCarpentry: "/images/services/modular-carpentry.jpg",
-  renovationPackage: "/images/services/renovation-package.jpg",
-  renovationService: "/images/services/renovation-service.jpg",
-  products: "/images/services/products.jpg",
+  modularCarpentry: "/src/assets/services1.png",
+  renovationPackage: "/src/assets/services2.png",
+  renovationService: "/src/assets/services3.png",
+  products: "/src/assets/services4.png",
   modernKitchen: "/images/works/modern-kitchen.jpg",
   modernLivingRoom: "/images/works/modern-living-room.jpg",
   bathroomRenovation: "/images/works/bathroom-renovation.jpg",
@@ -82,7 +82,10 @@ interface ServicesSectionProps {
   onBrochureOpen: () => void;
 }
 
-export function ServicesSection({ onShopNow, onBrochureOpen }: ServicesSectionProps) {
+export function ServicesSection({
+  onShopNow,
+  onBrochureOpen,
+}: ServicesSectionProps) {
   const services: ServiceItem[] = [
     {
       img: IMG.modularCarpentry,
@@ -151,8 +154,16 @@ interface FeaturedWorksSectionProps {
 
 const FEATURED_WORKS: Work[] = [
   { img: IMG.modernKitchen, title: "Modern Kitchen", location: "Barker Rd" },
-  { img: IMG.modernLivingRoom, title: "Modern Living Room", location: "Jalan Leban" },
-  { img: IMG.bathroomRenovation, title: "Bathroom Renovation", location: "Faber Walk" },
+  {
+    img: IMG.modernLivingRoom,
+    title: "Modern Living Room",
+    location: "Jalan Leban",
+  },
+  {
+    img: IMG.bathroomRenovation,
+    title: "Bathroom Renovation",
+    location: "Faber Walk",
+  },
 ];
 
 export function FeaturedWorksSection({ onViewAll }: FeaturedWorksSectionProps) {

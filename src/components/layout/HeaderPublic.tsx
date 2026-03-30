@@ -36,11 +36,14 @@ export default function HeaderPublic({
             className="hover:opacity-80 transition"
             onClick={onHomeClick}
           >
-            <Logo variant="light" />
+            <Logo variant="light" className="w-[80px] h-[80px]" />
           </button>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-8 lg:gap-[66px]" aria-label="Main navigation">
+          <nav
+            className="hidden md:flex items-center gap-8 lg:gap-[66px]"
+            aria-label="Main navigation"
+          >
             <button className={NAV_LINK_CLASS} onClick={onHomeClick}>
               Home
             </button>

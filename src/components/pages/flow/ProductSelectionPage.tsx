@@ -5,24 +5,47 @@
 import { useApp } from "@/context/AppContext";
 import { resolveProductName } from "@/utils";
 import { CartIconWithBadge } from "@/assets/icons";
-import { KITCHEN_PRODUCT_NAMES, WARDROBE_PRODUCT_NAMES } from "@/constants";
 
 const WARDROBE_PRODUCTS: Record<string, string[]> = {
-  "hanging-drawers":      ["type-a-d-d", "type-b-b-b-b"],
-  "shelvings-drawers":    ["type-c-c-c", "type-a-a-c-c"],
-  "long-hanging":         ["type-o-c-c"],
-  "2-tier-hanging":       ["w22", "w23"],
-  "shelvings-only":       ["type-c-c-c"],
+  "hanging-drawers": ["type-a-d-d", "type-b-b-b-b"],
+  "shelvings-drawers": ["type-c-c-c", "type-a-a-c-c"],
+  "long-hanging": ["type-o-c-c"],
+  "2-tier-hanging": ["w22", "w23"],
+  "shelvings-only": ["type-c-c-c"],
   "hanging-drawers-open": ["type-a-d-d", "type-o-c-c"],
-  "l-shape":              ["w22"],
+  "l-shape": ["w22"],
 };
 
 const KITCHEN_PRODUCTS: Record<string, string[]> = {
-  "bottom-cabinet":      ["bottom-w-door", "bottom-w-2-drawer", "bottom-w-3-drawer", "sauce-rack", "bottom-l-shape"],
-  "tall-cabinet":        ["tall-w-door", "tall-w-door-drawer", "tall-oven-cabinet", "tall-oven-microwave-cabinet", "fridge-cabinet-side-panel"],
-  "top-hung-cabinet":    ["top-hung-w-door", "top-hung-w-door-hl", "top-hung-w-door-hl-dish", "top-hung-w-door-2hk", "top-hung-w-door-2hk-dish", "top-hung-hood"],
-  "tall-storage-module": ["tsm-w-door", "tsm-w-2-drawer", "tsm-w-3-drawer", "tsm-open"],
-  "wardrobe":            ["type-a-d-d", "type-b-b-b-b"],
+  "bottom-cabinet": [
+    "bottom-w-door",
+    "bottom-w-2-drawer",
+    "bottom-w-3-drawer",
+    "sauce-rack",
+    "bottom-l-shape",
+  ],
+  "tall-cabinet": [
+    "tall-w-door",
+    "tall-w-door-drawer",
+    "tall-oven-cabinet",
+    "tall-oven-microwave-cabinet",
+    "fridge-cabinet-side-panel",
+  ],
+  "top-hung-cabinet": [
+    "top-hung-w-door",
+    "top-hung-w-door-hl",
+    "top-hung-w-door-hl-dish",
+    "top-hung-w-door-2hk",
+    "top-hung-w-door-2hk-dish",
+    "top-hung-hood",
+  ],
+  "tall-storage-module": [
+    "tsm-w-door",
+    "tsm-w-2-drawer",
+    "tsm-w-3-drawer",
+    "tsm-open",
+  ],
+  wardrobe: ["type-a-d-d", "type-b-b-b-b"],
 };
 
 export default function ProductSelectionPage() {
@@ -55,8 +78,18 @@ export default function ProductSelectionPage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage("seriesSelection")}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
           </svg>
           <span className="font-['Poppins'] text-sm">Back</span>
         </button>

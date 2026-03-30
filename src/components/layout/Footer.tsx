@@ -17,7 +17,7 @@ export default function Footer({
       <div className="max-w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Brand */}
         <div>
-          <Logo variant="light" />
+          <Logo variant="light" className="w-[80px] h-[80px]" />
           <p className="mt-4 font-['Poppins'] text-sm">{BRAND.tagline}.</p>
         </div>
 
@@ -48,10 +48,16 @@ export default function Footer({
         <div>
           <h3 className="font-['Poppins'] font-bold text-lg mb-4">Contact</h3>
           <address className="not-italic font-['Poppins'] text-sm leading-relaxed">
-            <a className="hover:opacity-70 transition block" href={`mailto:${BRAND.email}`}>
+            <a
+              className="hover:opacity-70 transition block"
+              href={`mailto:${BRAND.email}`}
+            >
               {BRAND.email}
             </a>
-            <a className="hover:opacity-70 transition block mt-1" href={`tel:${BRAND.phone.replace(/\s/g, "")}`}>
+            <a
+              className="hover:opacity-70 transition block mt-1"
+              href={`tel:${BRAND.phone.replace(/\s/g, "")}`}
+            >
               {BRAND.phone}
             </a>
           </address>

@@ -1,12 +1,3 @@
-/**
- * Placeholder pages — these mirror the original Figma components but wired
- * to AppContext instead of prop drilling. The detailed UI of each is preserved
- * from the original files; only the wiring and file organisation have changed.
- *
- * Replace each export with the full implementation by lifting the JSX from
- * the original file and swapping `props.onXxx()` calls for `useApp().xxx()`.
- */
-
 import { useApp } from "@/context/AppContext";
 
 // ─── Shopping Cart ────────────────────────────────────────────────────────────
@@ -18,16 +9,11 @@ export function ShoppingCartPage() {
     setCurrentPage,
     navigateTo,
     handleDeleteProduct,
-    handleUpdateRoomName,
-    setSelectedProductName,
-    setSelectedProductConfig,
-    setSelectedRoom,
-    setSelectedRoomId,
   } = useApp();
 
   const total = cartItems.reduce(
     (sum, room) => sum + room.products.reduce((s, p) => s + p.price, 0),
-    0
+    0,
   );
 
   return (
@@ -38,8 +24,18 @@ export function ShoppingCartPage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage(previousPage)}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
           </svg>
           <span className="font-['Poppins'] text-sm">Back</span>
         </button>
@@ -64,7 +60,10 @@ export function ShoppingCartPage() {
         ) : (
           <div className="space-y-8">
             {cartItems.map((room) => (
-              <section className="border border-gray-200 rounded-xl p-6" key={room.id}>
+              <section
+                className="border border-gray-200 rounded-xl p-6"
+                key={room.id}
+              >
                 <h2 className="font-['Poppins'] font-semibold text-lg text-[#1C1B1F] mb-4">
                   {room.name}
                 </h2>
@@ -92,8 +91,18 @@ export function ShoppingCartPage() {
                         className="shrink-0 p-2 text-gray-400 hover:text-red-500 transition"
                         onClick={() => handleDeleteProduct(room.id, product.id)}
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                          />
                         </svg>
                       </button>
                     </li>
@@ -130,11 +139,12 @@ export function ShoppingCartPage() {
 // ─── Checkout ─────────────────────────────────────────────────────────────────
 
 export function CheckoutPage() {
-  const { cartItems, propertyInfo, setCurrentPage, handlePaymentSuccess } = useApp();
+  const { cartItems, propertyInfo, setCurrentPage, handlePaymentSuccess } =
+    useApp();
 
   const total = cartItems.reduce(
     (sum, room) => sum + room.products.reduce((s, p) => s + p.price, 0),
-    0
+    0,
   );
 
   return (
@@ -144,8 +154,18 @@ export function CheckoutPage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage("cart")}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
           </svg>
           <span className="font-['Poppins'] text-sm">Back to Cart</span>
         </button>
@@ -168,8 +188,12 @@ export function CheckoutPage() {
               ["Key Date", propertyInfo.keyDate],
             ].map(([label, value]) => (
               <>
-                <dt className="text-[#999]" key={`dt-${label}`}>{label}</dt>
-                <dd className="text-[#1C1B1F] font-medium" key={`dd-${label}`}>{value}</dd>
+                <dt className="text-[#999]" key={`dt-${label}`}>
+                  {label}
+                </dt>
+                <dd className="text-[#1C1B1F] font-medium" key={`dd-${label}`}>
+                  {value}
+                </dd>
               </>
             ))}
           </dl>
@@ -182,9 +206,14 @@ export function CheckoutPage() {
           </h2>
           {cartItems.map((room) => (
             <div className="mb-4 last:mb-0" key={room.id}>
-              <p className="font-['Poppins'] text-sm text-[#666] mb-2">{room.name}</p>
+              <p className="font-['Poppins'] text-sm text-[#666] mb-2">
+                {room.name}
+              </p>
               {room.products.map((p) => (
-                <div className="flex justify-between font-['Poppins'] text-sm text-[#1C1B1F] mb-1" key={p.id}>
+                <div
+                  className="flex justify-between font-['Poppins'] text-sm text-[#1C1B1F] mb-1"
+                  key={p.id}
+                >
                   <span>{p.name}</span>
                   <span>SGD {p.price.toFixed(2)}</span>
                 </div>
@@ -239,8 +268,18 @@ export function ProfilePage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage(previousPage)}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
           </svg>
           <span className="font-['Poppins'] text-sm">Back</span>
         </button>
@@ -281,8 +320,18 @@ export function ProfilePage() {
               <span className="font-['Poppins'] text-base text-[#1C1B1F]">
                 {label}
               </span>
-              <svg className="w-5 h-5 ml-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+              <svg
+                className="w-5 h-5 ml-auto text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M9 18l6-6-6-6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
               </svg>
             </button>
           ))}

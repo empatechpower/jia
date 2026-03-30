@@ -1,11 +1,3 @@
-/**
- * HeroSection
- *
- * Replace `HERO_BG_URL` with your hosted image URL.
- * The `figma:asset/...` imports are build-tool-specific and won't work
- * in a standard Vite/React setup — use public folder or CDN URLs instead.
- */
-
 const HERO_BG_URL = "/images/hero-background.jpg";
 
 interface HeroSectionProps {

@@ -11,8 +11,8 @@
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? "https://jia-ideas.bubbleapps.io/api/1.1";
-const VERSION = import.meta.env.VITE_API_VERSION ?? "live"; // "live" | "test"
+const BASE = "https://jia-ideas.bubbleapps.io/api/1.1";
+// const VERSION =  "live"; // "live" | "test"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,9 +30,16 @@ export interface BubbleList<T> {
 }
 
 // ── Auth
-export interface LoginPayload  { email: string; password: string }
-export interface SignupPayload { email: string; password: string; phone: string }
-export interface AuthResponse  {
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+export interface SignupPayload {
+  email: string;
+  password: string;
+  phone: string;
+}
+export interface AuthResponse {
   token: string;
   user_id: string;
   email: string;
@@ -51,13 +58,13 @@ export interface UserProfile {
 // ── Products
 export interface Product {
   _id: string;
-  name: string;            // e.g. "Type A-D-D"
-  product_id: string;      // slug e.g. "type-a-d-d"
-  series_id: string;       // e.g. "hanging-drawers"
+  name: string; // e.g. "Type A-D-D"
+  product_id: string; // slug e.g. "type-a-d-d"
+  series_id: string; // e.g. "hanging-drawers"
   area: "wardrobe" | "kitchen";
   description: string;
-  images: string[];        // CDN URLs
-  sketch_image: string;    // CAD/sketch image URL
+  images: string[]; // CDN URLs
+  sketch_image: string; // CAD/sketch image URL
   is_active: boolean;
   pricing?: KitchenPriceTable;
 }
@@ -75,7 +82,7 @@ export interface KitchenPriceTable {
 // ── Series
 export interface Series {
   _id: string;
-  series_id: string;       // e.g. "hanging-drawers"
+  series_id: string; // e.g. "hanging-drawers"
   name: string;
   area: "wardrobe" | "kitchen";
   image: string;
@@ -209,9 +216,13 @@ async function request<T>(
 }
 
 // Helper for Bubble's Data API (GET list/single)
-async function dataGet<T>(path: string, params?: Record<string, string>): Promise<T> {
+async function dataGet<T>(
+  path: string,
+  params?: Record<string, string>,
+): Promise<T> {
   const url = new URL(`${BASE}/obj${path}`);
-  if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  if (params)
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
   const token = localStorage.getItem("jia_token");
   const headers: Record<string, string> = {};
@@ -225,7 +236,6 @@ async function dataGet<T>(path: string, params?: Record<string, string>): Promis
 // ─── API namespaces ───────────────────────────────────────────────────────────
 
 export const api = {
-
   // ── Auth ─────────────────────────────────────────────────────────────────
 
   auth: {
@@ -264,24 +274,46 @@ export const api = {
      * GET /obj/product
      * Bubble constraint format: constraints=[{"key":"series_id","constraint_type":"equals","value":"hanging-drawers"}]
      */
-    list: (filters?: { series?: string; area?: "wardrobe" | "kitchen"; is_active?: boolean }) => {
+    list: (filters?: {
+      series?: string;
+      area?: "wardrobe" | "kitchen";
+      is_active?: boolean;
+    }) => {
       const constraints: Array<Record<string, string>> = [];
-      if (filters?.series) constraints.push({ key: "series_id", constraint_type: "equals", value: filters.series });
-      if (filters?.area)   constraints.push({ key: "area",      constraint_type: "equals", value: filters.area });
-      if (filters?.is_active !== undefined) constraints.push({ key: "is_active", constraint_type: "equals", value: String(filters.is_active) });
+      if (filters?.series)
+        constraints.push({
+          key: "series_id",
+          constraint_type: "equals",
+          value: filters.series,
+        });
+      if (filters?.area)
+        constraints.push({
+          key: "area",
+          constraint_type: "equals",
+          value: filters.area,
+        });
+      if (filters?.is_active !== undefined)
+        constraints.push({
+          key: "is_active",
+          constraint_type: "equals",
+          value: String(filters.is_active),
+        });
       return dataGet<{ response: BubbleList<Product> }>("/product", {
-        ...(constraints.length ? { constraints: JSON.stringify(constraints) } : {}),
+        ...(constraints.length
+          ? { constraints: JSON.stringify(constraints) }
+          : {}),
       });
     },
 
     /** GET /obj/product/:id */
-    get: (id: string) =>
-      dataGet<{ response: Product }>(`/product/${id}`),
+    get: (id: string) => dataGet<{ response: Product }>(`/product/${id}`),
 
     /** GET /obj/kitchen_pricing?constraints=[{"key":"product_id"...}] */
     pricing: (productId: string) =>
       dataGet<{ response: BubbleList<KitchenPriceTable> }>("/kitchen_pricing", {
-        constraints: JSON.stringify([{ key: "product_id", constraint_type: "equals", value: productId }]),
+        constraints: JSON.stringify([
+          { key: "product_id", constraint_type: "equals", value: productId },
+        ]),
       }),
   },
 
@@ -290,9 +322,14 @@ export const api = {
   series: {
     list: (area?: "wardrobe" | "kitchen") => {
       const constraints = area
-        ? JSON.stringify([{ key: "area", constraint_type: "equals", value: area }])
+        ? JSON.stringify([
+            { key: "area", constraint_type: "equals", value: area },
+          ])
         : undefined;
-      return dataGet<{ response: BubbleList<Series> }>("/series", constraints ? { constraints } : undefined);
+      return dataGet<{ response: BubbleList<Series> }>(
+        "/series",
+        constraints ? { constraints } : undefined,
+      );
     },
   },
 
@@ -300,24 +337,26 @@ export const api = {
 
   projects: {
     /** POST /wf/create-project */
-    create: (payload: Omit<Project, "_id" | "user_id" | "created_at" | "status">) =>
-      request<{ project_id: string }>("POST", "/create-project", payload),
+    create: (
+      payload: Omit<Project, "_id" | "user_id" | "created_at" | "status">,
+    ) => request<{ project_id: string }>("POST", "/create-project", payload),
 
     /** GET /obj/project?constraints=[...] — list for current user */
-    list: () =>
-      dataGet<{ response: BubbleList<Project> }>("/project"),
+    list: () => dataGet<{ response: BubbleList<Project> }>("/project"),
 
     /** GET /obj/project/:id */
-    get: (id: string) =>
-      dataGet<{ response: Project }>(`/project/${id}`),
+    get: (id: string) => dataGet<{ response: Project }>(`/project/${id}`),
   },
 
   // ── Rooms ─────────────────────────────────────────────────────────────────
 
   rooms: {
     /** POST /wf/create-room */
-    create: (payload: { project_id: string; name: string; area: "wardrobe" | "kitchen" }) =>
-      request<{ room_id: string }>("POST", "/create-room", payload),
+    create: (payload: {
+      project_id: string;
+      name: string;
+      area: "wardrobe" | "kitchen";
+    }) => request<{ room_id: string }>("POST", "/create-room", payload),
 
     /** PATCH /wf/rename-room */
     rename: (roomId: string, name: string) =>
@@ -326,7 +365,9 @@ export const api = {
     /** GET /obj/room?constraints=[{"key":"project_id"...}] */
     listByProject: (projectId: string) =>
       dataGet<{ response: BubbleList<Room> }>("/room", {
-        constraints: JSON.stringify([{ key: "project_id", constraint_type: "equals", value: projectId }]),
+        constraints: JSON.stringify([
+          { key: "project_id", constraint_type: "equals", value: projectId },
+        ]),
       }),
   },
 
@@ -347,16 +388,14 @@ export const api = {
     }) => request<{ cart_item_id: string }>("POST", "/add-to-cart", payload),
 
     /** GET /obj/cart_item?constraints=[...] */
-    list: () =>
-      dataGet<{ response: BubbleList<CartItem> }>("/cart_item"),
+    list: () => dataGet<{ response: BubbleList<CartItem> }>("/cart_item"),
 
     /** DELETE via POST /wf/remove-from-cart */
     remove: (cartItemId: string) =>
       request<void>("POST", "/remove-from-cart", { cart_item_id: cartItemId }),
 
     /** POST /wf/clear-cart */
-    clear: () =>
-      request<void>("POST", "/clear-cart"),
+    clear: () => request<void>("POST", "/clear-cart"),
   },
 
   // ── Orders ────────────────────────────────────────────────────────────────
@@ -367,12 +406,10 @@ export const api = {
       request<{ order_id: string }>("POST", "/create-order", payload),
 
     /** GET /obj/order?constraints=[...] */
-    list: () =>
-      dataGet<{ response: BubbleList<Order> }>("/order"),
+    list: () => dataGet<{ response: BubbleList<Order> }>("/order"),
 
     /** GET /obj/order/:id */
-    get: (id: string) =>
-      dataGet<{ response: Order }>(`/order/${id}`),
+    get: (id: string) => dataGet<{ response: Order }>(`/order/${id}`),
   },
 
   // ── Portfolio ─────────────────────────────────────────────────────────────
@@ -381,10 +418,17 @@ export const api = {
     /** GET /obj/portfolio_project?sort_field=year&descending=true */
     list: (featured?: boolean) => {
       const params: Record<string, string> = {
-        sort_field: "year", descending: "true",
+        sort_field: "year",
+        descending: "true",
       };
-      if (featured) params.constraints = JSON.stringify([{ key: "is_featured", constraint_type: "equals", value: "true" }]);
-      return dataGet<{ response: BubbleList<PortfolioProject> }>("/portfolio_project", params);
+      if (featured)
+        params.constraints = JSON.stringify([
+          { key: "is_featured", constraint_type: "equals", value: "true" },
+        ]);
+      return dataGet<{ response: BubbleList<PortfolioProject> }>(
+        "/portfolio_project",
+        params,
+      );
     },
 
     /** GET /obj/portfolio_project/:id */
