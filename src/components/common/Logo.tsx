@@ -6,8 +6,8 @@ interface LogoProps {
 export default function Logo({ variant = "light", className = "" }: LogoProps) {
   const src =
     variant === "light"
-      ? "/src/assets/JIA_Logo_White.png"
-      : "/src/assets/Jia_Logo.png";
+      ? "/images/JIA_Logo_White.png"
+      : "/images/JIA_Logo_Black.png";
 
   return (
     <img

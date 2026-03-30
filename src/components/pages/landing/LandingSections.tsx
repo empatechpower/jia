@@ -2,10 +2,10 @@ import { useState } from "react";
 
 // ─── Image URL constants (replace with real assets or env vars) ───────────────
 const IMG = {
-  modularCarpentry: "/src/assets/services1.png",
-  renovationPackage: "/src/assets/services2.png",
-  renovationService: "/src/assets/services3.png",
-  products: "/src/assets/services4.png",
+  modularCarpentry: "/images/services1.png",
+  renovationPackage: "/images/services2.png",
+  renovationService: "/images/services3.png",
+  products: "/images/services4.png",
   modernKitchen: "/images/works/modern-kitchen.jpg",
   modernLivingRoom: "/images/works/modern-living-room.jpg",
   bathroomRenovation: "/images/works/bathroom-renovation.jpg",

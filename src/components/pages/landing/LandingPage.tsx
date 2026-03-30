@@ -13,7 +13,7 @@ import { useApp } from "@/context/AppContext";
 // Lazy-load the brochure modal so it doesn't bloat the initial bundle
 import { lazy, Suspense } from "react";
 const RenovationBrochureModal = lazy(
-  () => import("@/components/pages/RenovationBrochureModal")
+  () => import("@/components/pages/RenovationBrochureModal"),
 );
 
 export default function LandingPage() {
