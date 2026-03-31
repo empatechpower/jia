@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   type ReactNode,
+  useEffect,
 } from "react";
 import type {
   Page,
@@ -71,7 +72,7 @@ interface AppState {
     roomId: string,
     roomName: string,
     productImage: string,
-    config?: ProductConfig
+    config?: ProductConfig,
   ) => void;
   handleDeleteProduct: (roomId: string, productId: string) => void;
   handleUpdateRoomName: (roomId: string, newName: string) => void;
@@ -110,6 +111,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState("user@example.com");
 
+  useEffect(() => {
+    const token = localStorage.getItem("jia_token");
+    const email = localStorage.getItem("jia_email");
+
+    if (token && email) {
+      setIsLoggedIn(true);
+      setUserEmail(email);
+    }
+  }, []);
   const handleLogin = useCallback((email: string) => {
     setIsLoggedIn(true);
     setUserEmail(email);
@@ -135,9 +145,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Project config
   const [numberOfRooms, setNumberOfRooms] = useState(1);
-  const [propertyInfo, setPropertyInfo] = useState<PropertyInfo>(DEFAULT_PROPERTY);
-  const [rooms, setRooms] = useState<Room[]>([{ id: "room-1", name: "Room 1" }]);
-  const [kitchenInfo, setKitchenInfo] = useState<KitchenInfo | undefined>(undefined);
+  const [propertyInfo, setPropertyInfo] =
+    useState<PropertyInfo>(DEFAULT_PROPERTY);
+  const [rooms, setRooms] = useState<Room[]>([
+    { id: "room-1", name: "Room 1" },
+  ]);
+  const [kitchenInfo, setKitchenInfo] = useState<KitchenInfo | undefined>(
+    undefined,
+  );
   const [selectedProjectId, setSelectedProjectId] = useState("1");
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -151,9 +166,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       roomId: string,
       roomName: string,
       productImage: string,
-      config?: ProductConfig
+      config?: ProductConfig,
     ) => {
-      const price = calculateProductPrice(selectedArea, selectedProductId, config);
+      const price = calculateProductPrice(
+        selectedArea,
+        selectedProductId,
+        config,
+      );
 
       const newProduct: CartProduct = {
         id: `product-${Date.now()}`,
@@ -169,7 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return prev.map((r, i) =>
             i === existingIdx
               ? { ...r, products: [...r.products, newProduct] }
-              : r
+              : r,
           );
         }
         return [
@@ -183,29 +202,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ];
       });
     },
-    [selectedArea, selectedProductId]
+    [selectedArea, selectedProductId],
   );
 
-  const handleDeleteProduct = useCallback((roomId: string, productId: string) => {
-    setCartItems((prev) =>
-      prev
-        .map((room) =>
-          room.id === roomId
-            ? {
-                ...room,
-                products: room.products.filter((p) => p.id !== productId),
-              }
-            : room
-        )
-        .filter((room) => room.products.length > 0)
-    );
-  }, []);
+  const handleDeleteProduct = useCallback(
+    (roomId: string, productId: string) => {
+      setCartItems((prev) =>
+        prev
+          .map((room) =>
+            room.id === roomId
+              ? {
+                  ...room,
+                  products: room.products.filter((p) => p.id !== productId),
+                }
+              : room,
+          )
+          .filter((room) => room.products.length > 0),
+      );
+    },
+    [],
+  );
 
-  const handleUpdateRoomName = useCallback((roomId: string, newName: string) => {
-    setCartItems((prev) =>
-      prev.map((r) => (r.id === roomId ? { ...r, name: newName } : r))
-    );
-  }, []);
+  const handleUpdateRoomName = useCallback(
+    (roomId: string, newName: string) => {
+      setCartItems((prev) =>
+        prev.map((r) => (r.id === roomId ? { ...r, name: newName } : r)),
+      );
+    },
+    [],
+  );
 
   const clearCart = useCallback(() => setCartItems([]), []);
 

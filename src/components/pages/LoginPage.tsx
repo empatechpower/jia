@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/hooks/useAuth";
 
 // ─── Icon helpers (inline SVG, no figma dependency) ──────────────────────────
 
@@ -18,8 +19,12 @@ function FieldIcon({ path }: { path: string }) {
 
 const ICONS = {
   mail: "M13.333 2.667H2.667C1.933 2.667 1.34 3.267 1.34 4L1.333 12c0 .733.6 1.333 1.334 1.333h10.666c.734 0 1.334-.6 1.334-1.333V4c0-.733-.6-1.333-1.334-1.333zm0 2.666L8 8.667 2.667 5.333V4L8 7.333 13.333 4v1.333z",
-  phone: "M13.333 10.98c-1.12 0-2.213-.18-3.233-.513a.67.67 0 0 0-.68.16l-1.993 1.993a10.04 10.04 0 0 1-4.38-4.38l1.986-2a.665.665 0 0 0 .167-.687A10.17 10.17 0 0 1 4.687 3c0-.367-.3-.667-.667-.667H1.333C.967 2.333.667 2.633.667 3c0 7.547 6.12 13.667 13.666 13.667.367 0 .667-.3.667-.667V11.647c0-.367-.3-.667-.667-.667z",
+  phone:
+    "M13.333 10.98c-1.12 0-2.213-.18-3.233-.513a.67.67 0 0 0-.68.16l-1.993 1.993a10.04 10.04 0 0 1-4.38-4.38l1.986-2a.665.665 0 0 0 .167-.687A10.17 10.17 0 0 1 4.687 3c0-.367-.3-.667-.667-.667H1.333C.967 2.333.667 2.633.667 3c0 7.547 6.12 13.667 13.666 13.667.367 0 .667-.3.667-.667V11.647c0-.367-.3-.667-.667-.667z",
   key: "M10 1.333A4.67 4.67 0 0 0 5.333 6c0 .394.047.774.134 1.14L1.333 11.273V13.5a.5.5 0 0 0 .5.5H4v-1.333h1.333V11.333H6.86l.787-.787A4.618 4.618 0 0 0 10 10.667 4.67 4.67 0 0 0 14.667 6 4.67 4.67 0 0 0 10 1.333zm0 1.334A3.333 3.333 0 1 1 10 9.333 3.333 3.333 0 0 1 10 2.667zm1.333 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
+  eye: "M8 2.667c-3.333 0-6.18 2.073-7.333 5.333C1.82 11.26 4.667 13.333 8 13.333s6.18-2.073 7.333-5.333C14.18 4.74 11.333 2.667 8 2.667zm0 8.666A3.333 3.333 0 1 1 8 4.667a3.333 3.333 0 0 1 0 6.666zm0-5.333a2 2 0 1 0 0 4 2 2 0 0 0 0-4z",
+  eyeOff:
+    "M2 2.667l10.666 10.666-.94.94-1.74-1.74A7.21 7.21 0 0 1 8 13.333c-3.333 0-6.18-2.073-7.333-5.333a7.97 7.97 0 0 1 2.06-3.06L1.333 3.607 2 2.667zm6 2.666c1.84 0 3.333 1.493 3.333 3.334 0 .373-.06.733-.173 1.067L6.933 5.507c.333-.113.693-.174 1.067-.174zm5.333 2.667c-.44-1.24-1.187-2.333-2.14-3.18l.94-.94A9.33 9.33 0 0 1 15.333 8c-1.153 3.26-4 5.333-7.333 5.333-.88 0-1.727-.14-2.52-.4l1.14-1.14c.447.14.913.207 1.38.207 3.333 0 6.18-2.073 7.333-5.333z",
 };
 
 // ─── Reusable field ───────────────────────────────────────────────────────────
@@ -45,29 +50,47 @@ function Field({
   required,
   autoComplete,
 }: FieldProps) {
+  const isPassword = type === "password";
+  const [showPassword, setShowPassword] = useState(false);
+
+  const inputType = isPassword ? (showPassword ? "text" : "password") : type;
+
   return (
     <div className="flex flex-col gap-2">
       <label className="font-['Poppins'] text-xs text-[#414042]">{label}</label>
+
       <div className="bg-[#ececec] rounded-lg flex items-center gap-2 px-4 py-3 md:py-4">
         <FieldIcon path={ICONS[icon]} />
+
         <input
           autoComplete={autoComplete}
           className="flex-1 bg-transparent font-['Poppins'] text-base text-[#242424] placeholder:text-[#c1c8cb] outline-none"
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
-          type={type}
+          type={inputType}
           value={value}
         />
+
+        {/* Eye toggle */}
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="flex items-center justify-center"
+          >
+            <FieldIcon path={showPassword ? ICONS.eyeOff : ICONS.eye} />
+          </button>
+        )}
       </div>
     </div>
   );
 }
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
-  const { handleLogin, setCurrentPage } = useApp();
+  const { setCurrentPage } = useApp();
+  const { login, signup, loading, error: authError } = useAuth();
 
   const [isSignIn, setIsSignIn] = useState(true);
   const [email, setEmail] = useState("");
@@ -76,7 +99,19 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
-  function handleSubmit(e: FormEvent) {
+  // function handleSubmit(e: FormEvent) {
+  //   e.preventDefault();
+  //   setError("");
+
+  //   if (!email || !password) {
+  //     setError("Please fill in all required fields.");
+  //     return;
+  //   }
+
+  //   // Auth stub — replace with real auth (Firebase, Supabase, etc.)
+  //   handleLogin(email);
+  // }
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
@@ -85,10 +120,16 @@ export default function LoginPage() {
       return;
     }
 
-    // Auth stub — replace with real auth (Firebase, Supabase, etc.)
-    handleLogin(email);
+    try {
+      if (isSignIn) {
+        await login(email, password);
+      } else {
+        await signup(email, password, phone);
+      }
+    } catch {
+      // error already handled in hook
+    }
   }
-
   return (
     <div className="min-h-screen w-full flex">
       {/* Left panel — decorative image */}
@@ -165,7 +206,11 @@ export default function LoginPage() {
         </div>
 
         {/* Form */}
-        <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
+        <form
+          className="flex flex-col gap-5"
+          onSubmit={handleSubmit}
+          noValidate
+        >
           <Field
             autoComplete="email"
             icon="mail"
@@ -221,17 +266,22 @@ export default function LoginPage() {
             </p>
           )}
 
-          {error && (
+          {(error || authError) && (
             <p className="font-['Poppins'] text-sm text-red-600" role="alert">
-              {error}
+              {error || authError}
             </p>
           )}
 
           <button
+            disabled={loading}
             className="bg-[#414042] hover:bg-[#242424] active:scale-95 transition rounded-lg px-8 py-3 md:py-4 w-full font-['Roboto'] font-medium text-base text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#414042]"
             type="submit"
           >
-            {isSignIn ? "Sign In" : "Create Account"}
+            {loading
+              ? "Please wait..."
+              : isSignIn
+                ? "Sign In"
+                : "Create Account"}
           </button>
         </form>
       </div>

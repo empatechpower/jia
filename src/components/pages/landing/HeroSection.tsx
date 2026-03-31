@@ -1,4 +1,4 @@
-const HERO_BG_URL = "/images/hero-background.jpg";
+const HERO_BG_URL = "/images/hero_jia.png";
 
 interface HeroSectionProps {
   onShopNow: () => void;
