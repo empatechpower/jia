@@ -1,13 +1,16 @@
+"use client";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { useApp } from "@/context/AppContext";
-
+import { useState, useEffect } from "react";
+import { api } from "@/services/api";
+import type { PortfolioProject } from "@/services/api";
 // ─── Data ────────────────────────────────────────────────────────────────────
 // In a real app, fetch this from an API. Keep it co-located with the page until
 // it warrants its own data layer (React Query, SWR, etc.).
 
 interface Project {
-  id: string;
+  _id: string;
   title: string;
   location: string;
   category: string;
@@ -15,116 +18,116 @@ interface Project {
   year: string;
 }
 
-const PROJECTS: Project[] = [
-  {
-    id: "1",
-    title: "Modern Minimalist Haven",
-    location: "Barker Road",
-    category: "Full Renovation",
-    year: "2024",
-    imageUrl:
-      "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80",
-  },
-  {
-    id: "2",
-    title: "Luxury Master Suite",
-    location: "Holland Village",
-    category: "Bedroom",
-    year: "2024",
-    imageUrl:
-      "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&q=80",
-  },
-  {
-    id: "3",
-    title: "Contemporary Kitchen Design",
-    location: "Jalan Leban",
-    category: "Kitchen",
-    year: "2024",
-    imageUrl:
-      "https://images.unsplash.com/photo-1665507279458-b21dea52c447?w=800&q=80",
-  },
-  {
-    id: "4",
-    title: "Elegant Living Space",
-    location: "Faber Walk",
-    category: "Living Room",
-    year: "2023",
-    imageUrl:
-      "https://images.unsplash.com/photo-1631679706909-1844bbd07221?w=800&q=80",
-  },
-  {
-    id: "5",
-    title: "Spa-Inspired Bathroom",
-    location: "Bukit Timah",
-    category: "Bathroom",
-    year: "2023",
-    imageUrl:
-      "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80",
-  },
-  {
-    id: "6",
-    title: "Custom Wardrobe Solution",
-    location: "Clementi",
-    category: "Carpentry",
-    year: "2023",
-    imageUrl:
-      "https://images.unsplash.com/photo-1630699144552-b2b60b277b75?w=800&q=80",
-  },
-  {
-    id: "7",
-    title: "Modern Dining Experience",
-    location: "Tanjong Pagar",
-    category: "Dining Room",
-    year: "2023",
-    imageUrl:
-      "https://images.unsplash.com/photo-1600489000300-e590b381ce48?w=800&q=80",
-  },
-  {
-    id: "8",
-    title: "Home Office Transformation",
-    location: "East Coast",
-    category: "Study Room",
-    year: "2023",
-    imageUrl:
-      "https://images.unsplash.com/photo-1462826303086-329426d1aef5?w=800&q=80",
-  },
-  {
-    id: "9",
-    title: "Cozy Study Corner",
-    location: "Serangoon",
-    category: "Study Room",
-    year: "2022",
-    imageUrl:
-      "https://images.unsplash.com/photo-1611817084000-13da78818a0f?w=800&q=80",
-  },
-  {
-    id: "10",
-    title: "Artisan Woodwork Showcase",
-    location: "Tiong Bahru",
-    category: "Carpentry",
-    year: "2022",
-    imageUrl:
-      "https://images.unsplash.com/photo-1487015307662-6ce6210680f1?w=800&q=80",
-  },
-  {
-    id: "11",
-    title: "Serene Bedroom Retreat",
-    location: "Novena",
-    category: "Bedroom",
-    year: "2022",
-    imageUrl:
-      "https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=800&q=80",
-  },
-  {
-    id: "12",
-    title: "Scandinavian Inspired Home",
-    location: "Ang Mo Kio",
-    category: "Full Renovation",
-    year: "2022",
-    imageUrl:
-      "https://images.unsplash.com/photo-1724582586413-6b69e1c94a17?w=800&q=80",
-  },
-];
+// const PROJECTS: Project[] = [
+//   {
+//     id: "1",
+//     title: "Modern Minimalist Haven",
+//     location: "Barker Road",
+//     category: "Full Renovation",
+//     year: "2024",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80",
+//   },
+//   {
+//     id: "2",
+//     title: "Luxury Master Suite",
+//     location: "Holland Village",
+//     category: "Bedroom",
+//     year: "2024",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&q=80",
+//   },
+//   {
+//     id: "3",
+//     title: "Contemporary Kitchen Design",
+//     location: "Jalan Leban",
+//     category: "Kitchen",
+//     year: "2024",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1665507279458-b21dea52c447?w=800&q=80",
+//   },
+//   {
+//     id: "4",
+//     title: "Elegant Living Space",
+//     location: "Faber Walk",
+//     category: "Living Room",
+//     year: "2023",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1631679706909-1844bbd07221?w=800&q=80",
+//   },
+//   {
+//     id: "5",
+//     title: "Spa-Inspired Bathroom",
+//     location: "Bukit Timah",
+//     category: "Bathroom",
+//     year: "2023",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80",
+//   },
+//   {
+//     id: "6",
+//     title: "Custom Wardrobe Solution",
+//     location: "Clementi",
+//     category: "Carpentry",
+//     year: "2023",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1630699144552-b2b60b277b75?w=800&q=80",
+//   },
+//   {
+//     id: "7",
+//     title: "Modern Dining Experience",
+//     location: "Tanjong Pagar",
+//     category: "Dining Room",
+//     year: "2023",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1600489000300-e590b381ce48?w=800&q=80",
+//   },
+//   {
+//     id: "8",
+//     title: "Home Office Transformation",
+//     location: "East Coast",
+//     category: "Study Room",
+//     year: "2023",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1462826303086-329426d1aef5?w=800&q=80",
+//   },
+//   {
+//     id: "9",
+//     title: "Cozy Study Corner",
+//     location: "Serangoon",
+//     category: "Study Room",
+//     year: "2022",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1611817084000-13da78818a0f?w=800&q=80",
+//   },
+//   {
+//     id: "10",
+//     title: "Artisan Woodwork Showcase",
+//     location: "Tiong Bahru",
+//     category: "Carpentry",
+//     year: "2022",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1487015307662-6ce6210680f1?w=800&q=80",
+//   },
+//   {
+//     id: "11",
+//     title: "Serene Bedroom Retreat",
+//     location: "Novena",
+//     category: "Bedroom",
+//     year: "2022",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=800&q=80",
+//   },
+//   {
+//     id: "12",
+//     title: "Scandinavian Inspired Home",
+//     location: "Ang Mo Kio",
+//     category: "Full Renovation",
+//     year: "2022",
+//     imageUrl:
+//       "https://images.unsplash.com/photo-1724582586413-6b69e1c94a17?w=800&q=80",
+//   },
+// ];
 
 // ─── Project card ─────────────────────────────────────────────────────────────
 
@@ -132,7 +135,7 @@ function ProjectCard({
   project,
   onClick,
 }: {
-  project: Project;
+  project: PortfolioProject;
   onClick: () => void;
 }) {
   return (
@@ -143,7 +146,7 @@ function ProjectCard({
             alt={project.title}
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             loading="lazy"
-            src={project.imageUrl}
+            src={`https:${project["featureImg"]}`}
           />
           {/* Hover overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -155,11 +158,11 @@ function ProjectCard({
         </div>
         <div className="flex flex-col gap-1">
           <h3 className="font-['DM_Sans'] font-bold text-[#383838] text-lg md:text-xl group-hover:text-[#7b7267] transition">
-            {project.title}
+            {project.Name}
           </h3>
           <div className="flex items-center justify-between">
             <p className="font-['DM_Sans'] text-[#666] text-sm md:text-base">
-              {project.location}
+              {project.Location}
             </p>
             <span className="font-['Poppins'] text-xs text-[#999]">
               {project.year}
@@ -189,7 +192,17 @@ export default function PortfolioPage() {
   function handleGetStarted() {
     setCurrentPage(isLoggedIn ? "newProject" : "login");
   }
-
+  const [works, setWorks] = useState<PortfolioProject[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.portfolio
+      .list()
+      .then((data) => {
+        setWorks(data.response.results);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
   return (
     <div className="min-h-screen bg-white">
       <Header />
@@ -223,13 +236,15 @@ export default function PortfolioPage() {
         className="py-12 md:py-16 lg:py-20 px-4 md:px-8 lg:px-[76px]"
       >
         <div className="max-w-[1280px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
-          {PROJECTS.map((p) => (
-            <ProjectCard
-              key={p.id}
-              onClick={() => handleProjectClick(p.id)}
-              project={p}
-            />
-          ))}
+          {works
+            .filter((work) => work.Special === "No")
+            .map((p) => (
+              <ProjectCard
+                key={p._id}
+                onClick={() => handleProjectClick(p._id)}
+                project={p}
+              />
+            ))}
         </div>
       </section>
 

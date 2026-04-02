@@ -1,5 +1,7 @@
-import { useState } from "react";
-
+"use client";
+import { useState, useEffect } from "react";
+import { api } from "@/services/api";
+import type { PortfolioProject } from "@/services/api";
 // ─── Image URL constants (replace with real assets or env vars) ───────────────
 const IMG = {
   modularCarpentry: "/images/service1.png",
@@ -152,21 +154,18 @@ interface FeaturedWorksSectionProps {
   onViewAll: () => void;
 }
 
-const FEATURED_WORKS: Work[] = [
-  { img: IMG.modernKitchen, title: "Modern Kitchen", location: "Barker Rd" },
-  {
-    img: IMG.modernLivingRoom,
-    title: "Modern Living Room",
-    location: "Jalan Leban",
-  },
-  {
-    img: IMG.bathroomRenovation,
-    title: "Bathroom Renovation",
-    location: "Faber Walk",
-  },
-];
-
 export function FeaturedWorksSection({ onViewAll }: FeaturedWorksSectionProps) {
+  const [works, setWorks] = useState<PortfolioProject[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.portfolio
+      .list()
+      .then((data) => {
+        setWorks(data.response.results);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
   return (
     <section
       aria-label="Featured Works"
@@ -192,28 +191,46 @@ export function FeaturedWorksSection({ onViewAll }: FeaturedWorksSectionProps) {
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 lg:gap-[48px]">
-          {FEATURED_WORKS.map((work) => (
-            <div className="flex flex-col gap-4" key={work.title}>
-              <div className="relative w-full aspect-square rounded-bl-[24px] rounded-tr-[24px] shadow-[0px_0px_17px_2px_rgba(0,0,0,0.25)] overflow-hidden">
-                <img
-                  alt={work.title}
-                  className="absolute inset-0 w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  loading="lazy"
-                  src={work.img}
-                />
+        {loading ? (
+          // Skeleton loaders matching your card layout
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 lg:gap-[48px]">
+            {[...Array(3)].map((_, i) => (
+              <div className="flex flex-col gap-4 animate-pulse" key={i}>
+                <div className="w-full aspect-square rounded-bl-[24px] rounded-tr-[24px] bg-gray-200" />
+                <div className="flex flex-col gap-2">
+                  <div className="h-5 bg-gray-200 rounded w-3/4" />
+                  <div className="h-4 bg-gray-200 rounded w-1/2" />
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <p className="capitalize font-['DM_Sans'] font-bold text-[#383838] text-lg md:text-[22px]">
-                  {work.title}
-                </p>
-                <p className="font-['DM_Sans'] text-[#383838] text-sm md:text-base">
-                  {work.location}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 lg:gap-[48px]">
+            {works
+              .filter((work) => work.featured === "Yes")
+              .slice(0, 3)
+              .map((work) => (
+                <div className="flex flex-col gap-4" key={work._id}>
+                  <div className="relative w-full aspect-square rounded-bl-[24px] rounded-tr-[24px] shadow-[0px_0px_17px_2px_rgba(0,0,0,0.25)] overflow-hidden">
+                    <img
+                      alt={work.Name}
+                      className="absolute inset-0 w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                      src={`https:${work["featureImg"]}`} // prepend https:
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <p className="capitalize font-['DM_Sans'] font-bold text-[#383838] text-lg md:text-[22px]">
+                      {work.Name}
+                    </p>
+                    <p className="font-['DM_Sans'] text-[#383838] text-sm md:text-base">
+                      {work.Location ?? work.Name}
+                    </p>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
     </section>
   );

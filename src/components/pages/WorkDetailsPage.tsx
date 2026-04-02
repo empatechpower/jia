@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/context/AppContext";
+import { api, PortfolioProject } from "@/services/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,14 +62,39 @@ const PROJECT_DB: Record<string, ProjectDetails> = {
       "Herringbone parquet flooring",
       "Concealed air-conditioning",
     ],
-    coverImage: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=1200&q=80",
+    coverImage:
+      "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=1200&q=80",
     galleryImages: [
-      { id: "g1", url: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80", caption: "Open-concept living room" },
-      { id: "g2", url: "https://images.unsplash.com/photo-1631679706909-1844bbd07221?w=800&q=80", caption: "Dining area" },
-      { id: "g3", url: "https://images.unsplash.com/photo-1665507279458-b21dea52c447?w=800&q=80", caption: "Contemporary kitchen" },
-      { id: "g4", url: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&q=80", caption: "Master bedroom" },
-      { id: "g5", url: "https://images.unsplash.com/photo-1630699144552-b2b60b277b75?w=800&q=80", caption: "Walk-in wardrobe" },
-      { id: "g6", url: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80", caption: "Spa bathroom" },
+      {
+        id: "g1",
+        url: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80",
+        caption: "Open-concept living room",
+      },
+      {
+        id: "g2",
+        url: "https://images.unsplash.com/photo-1631679706909-1844bbd07221?w=800&q=80",
+        caption: "Dining area",
+      },
+      {
+        id: "g3",
+        url: "https://images.unsplash.com/photo-1665507279458-b21dea52c447?w=800&q=80",
+        caption: "Contemporary kitchen",
+      },
+      {
+        id: "g4",
+        url: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&q=80",
+        caption: "Master bedroom",
+      },
+      {
+        id: "g5",
+        url: "https://images.unsplash.com/photo-1630699144552-b2b60b277b75?w=800&q=80",
+        caption: "Walk-in wardrobe",
+      },
+      {
+        id: "g6",
+        url: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80",
+        caption: "Spa bathroom",
+      },
     ],
   },
 };
@@ -92,7 +118,7 @@ function Lightbox({
   onPrev,
   onNext,
 }: {
-  images: GalleryImage[];
+  images: string[];
   index: number;
   onClose: () => void;
   onPrev: () => void;
@@ -110,8 +136,18 @@ function Lightbox({
         className="absolute top-4 right-4 text-white hover:opacity-70 transition"
         onClick={onClose}
       >
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+        <svg
+          className="w-8 h-8"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M6 18L18 6M6 6l12 12"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+          />
         </svg>
       </button>
 
@@ -121,22 +157,32 @@ function Lightbox({
         disabled={index === 0}
         onClick={onPrev}
       >
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+        <svg
+          className="w-8 h-8"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M15 19l-7-7 7-7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+          />
         </svg>
       </button>
 
       <div className="max-w-4xl w-full">
         <img
-          alt={img.caption ?? ""}
+          alt={img ?? ""}
           className="w-full max-h-[80vh] object-contain rounded-lg"
-          src={img.url}
+          src={img}
         />
-        {img.caption && (
+        {/* {img.caption && (
           <p className="text-center text-white/70 font-['Poppins'] text-sm mt-4">
             {img.caption}
           </p>
-        )}
+        )} */}
       </div>
 
       <button
@@ -145,8 +191,18 @@ function Lightbox({
         disabled={index === images.length - 1}
         onClick={onNext}
       >
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+        <svg
+          className="w-8 h-8"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M9 5l7 7-7 7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+          />
         </svg>
       </button>
     </div>
@@ -160,7 +216,21 @@ export default function WorkDetailsPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const project = getProjectDetails(selectedProjectId);
+  const [workDetails, setWorkDetails] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    api.portfolio
+      .single(selectedProjectId)
+      .then((data) => {
+        const project = data.response.results;
+        setWorkDetails(project);
+        console.log("Fetched project details:", data.response.results);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+  if (workDetails) console.log("Work details state:", workDetails);
   return (
     <div className="min-h-screen bg-white">
       {/* Back bar */}
@@ -169,8 +239,18 @@ export default function WorkDetailsPage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage("portfolio")}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
           </svg>
           <span className="font-['Poppins'] text-sm">Back to Portfolio</span>
         </button>
@@ -181,7 +261,7 @@ export default function WorkDetailsPage() {
         <img
           alt={project.title}
           className="absolute inset-0 w-full h-full object-cover"
-          src={project.coverImage}
+          src={`https:${workDetails?.featureImg}`}
         />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative max-w-[1280px] mx-auto px-4 md:px-8 lg:px-[76px] h-full flex flex-col justify-end pb-8 md:pb-12">
@@ -189,7 +269,7 @@ export default function WorkDetailsPage() {
             {project.category}
           </span>
           <h1 className="font-['Poppins'] font-bold text-3xl md:text-4xl lg:text-5xl text-white mb-2">
-            {project.title}
+            {workDetails?.name}
           </h1>
           <p className="font-['DM_Sans'] text-white/80 text-base md:text-lg">
             {project.location}
@@ -268,25 +348,25 @@ export default function WorkDetailsPage() {
             Project Gallery
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-            {project.galleryImages.map((img, i) => (
+            {workDetails?.ListOfImg?.map((img: any, i: number) => (
               <button
                 className="relative aspect-square rounded-lg overflow-hidden group"
                 key={img.id}
                 onClick={() => setLightboxIndex(i)}
               >
                 <img
-                  alt={img.caption ?? ""}
+                  alt={img ?? ""}
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   loading="lazy"
-                  src={img.url}
+                  src={`https:${img}`}
                 />
-                {img.caption && (
+                {/* {img.caption && (
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
                     <p className="text-white text-xs font-['Poppins']">
                       {img.caption}
                     </p>
                   </div>
-                )}
+                )} */}
               </button>
             ))}
           </div>
@@ -296,10 +376,14 @@ export default function WorkDetailsPage() {
       {/* Lightbox */}
       {lightboxIndex !== null && (
         <Lightbox
-          images={project.galleryImages}
+          images={workDetails?.ListOfImg}
           index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
-          onNext={() => setLightboxIndex((i) => Math.min((i ?? 0) + 1, project.galleryImages.length - 1))}
+          onNext={() =>
+            setLightboxIndex((i) =>
+              Math.min((i ?? 0) + 1, workDetails?.ListOfImg.length - 1),
+            )
+          }
           onPrev={() => setLightboxIndex((i) => Math.max((i ?? 0) - 1, 0))}
         />
       )}

@@ -11,7 +11,7 @@
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const BASE = "https://jiaideas.com/version-test/api/1.1";
+const BASE = "https://jiaideas.com/api/1.1";
 // const VERSION =  "live"; // "live" | "test"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -168,7 +168,7 @@ export interface Order {
 export interface PortfolioProject {
   _id: string;
   title: string;
-  location: string;
+  Location: string;
   category: string;
   year: string;
   cover_image: string;
@@ -178,9 +178,13 @@ export interface PortfolioProject {
   solutions: string[];
   features: string[];
   client: string;
+  featureImg: string;
+  Special: string;
+
   duration: string;
+  Name: string;
   size: string;
-  is_featured: boolean;
+  featured: string;
 }
 
 // ─── HTTP helper ──────────────────────────────────────────────────────────────
@@ -220,7 +224,7 @@ async function dataGet<T>(
   path: string,
   params?: Record<string, string>,
 ): Promise<T> {
-  const url = new URL(`${BASE}/obj${path}`);
+  const url = new URL(`${BASE}/wf${path}`);
   if (params)
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
@@ -415,24 +419,15 @@ export const api = {
   // ── Portfolio ─────────────────────────────────────────────────────────────
 
   portfolio: {
-    /** GET /obj/portfolio_project?sort_field=year&descending=true */
-    list: (featured?: boolean) => {
-      const params: Record<string, string> = {
-        sort_field: "year",
-        descending: "true",
-      };
-      if (featured)
-        params.constraints = JSON.stringify([
-          { key: "is_featured", constraint_type: "equals", value: "true" },
-        ]);
+    list: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/portfolio_project",
-        params,
+        "/get_portfolio",
       );
     },
-
-    /** GET /obj/portfolio_project/:id */
-    get: (id: string) =>
-      dataGet<{ response: PortfolioProject }>(`/portfolio_project/${id}`),
+    single: (id: string) => {
+      return dataGet<{ response: BubbleList<PortfolioProject> }>(
+        `/get_a_portfolio?id=${id}`,
+      );
+    },
   },
 };

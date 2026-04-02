@@ -49,7 +49,7 @@ export function useAuth(): AuthHook {
 
         // ✅ FIX: unwrap Bubble response
         const data = (res as any).response;
-
+        console.log("Login response:", res, "Unwrapped data:", data);
         localStorage.setItem(TOKEN_KEY, data.token);
         localStorage.setItem(USER_ID_KEY, data.user_id);
         localStorage.setItem("jia_email", email); // since API doesn't return it
