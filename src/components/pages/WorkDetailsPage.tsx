@@ -225,12 +225,11 @@ export default function WorkDetailsPage() {
       .then((data) => {
         const project = data.response.results;
         setWorkDetails(project);
-        console.log("Fetched project details:", data.response.results);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
-  if (workDetails) console.log("Work details state:", workDetails);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Back bar */}
@@ -381,7 +380,7 @@ export default function WorkDetailsPage() {
           onClose={() => setLightboxIndex(null)}
           onNext={() =>
             setLightboxIndex((i) =>
-              Math.min((i ?? 0) + 1, workDetails?.ListOfImg.length - 1),
+              Math.min((i ?? 0) + 1, workDetails?.ListOfImg.length - 1)
             )
           }
           onPrev={() => setLightboxIndex((i) => Math.max((i ?? 0) - 1, 0))}

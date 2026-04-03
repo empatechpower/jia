@@ -3,8 +3,18 @@ import type { ReactNode } from "react";
 // Check icon (green, shown when section is complete)
 function CheckIcon() {
   return (
-    <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} />
+    <svg
+      className="w-4 h-4 text-green-500 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M5 13l4 4L19 7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2.5}
+      />
     </svg>
   );
 }
@@ -13,12 +23,19 @@ function CheckIcon() {
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
-      className={`w-5 h-5 text-[#414042] shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+      className={`w-5 h-5 text-[#414042] shrink-0 transition-transform duration-200 ${
+        open ? "rotate-180" : ""
+      }`}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
     >
-      <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+      <path
+        d="M19 9l-7 7-7-7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
     </svg>
   );
 }
@@ -80,9 +97,13 @@ export function Accordion({
         type="button"
       >
         <div className="flex flex-col gap-0.5 min-w-0">
-          <span className="font-['Poppins'] font-bold text-sm text-[#242424]">{title}</span>
+          <span className="font-['Poppins'] font-bold text-sm text-[#242424]">
+            {title}
+          </span>
           {subtitle && (
-            <span className="font-['Poppins'] text-xs text-[#666] truncate">{subtitle}</span>
+            <span className="font-['Poppins'] text-xs text-[#666] truncate">
+              {subtitle}
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -105,7 +126,10 @@ export function Accordion({
 
 export function SwatchRow({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: "thin" }}>
+    <div
+      className="overflow-x-auto pb-2 -mx-1 px-1"
+      style={{ scrollbarWidth: "thin" }}
+    >
       <div className="flex gap-3 w-max">{children}</div>
     </div>
   );
@@ -117,38 +141,58 @@ interface ColorSwatchProps {
   name: string;
   code: string;
   hex: string;
-  selected: boolean;
+  imageUrl?: string;
+  selected?: boolean;
   onSelect: () => void;
   onViewImage: () => void;
 }
 
-export function ColorSwatch({ name, code, hex, selected, onSelect, onViewImage }: ColorSwatchProps) {
+export function ColorSwatch({
+  name,
+  code,
+  hex,
+  imageUrl,
+  selected = false,
+  onSelect,
+  onViewImage,
+}: ColorSwatchProps) {
   return (
     <div
       className={`flex-shrink-0 flex flex-col items-center rounded-lg border-2 overflow-hidden transition cursor-pointer ${
-        selected ? "border-[#414042]" : "border-[#e0e0e0] hover:border-[#b0b0b0]"
+        selected
+          ? "border-[#414042]"
+          : "border-[#e0e0e0] hover:border-[#b0b0b0]"
       }`}
       style={{ width: 160 }}
       onClick={onSelect}
     >
-      {/* Colour block */}
+      {/* Color / Image block */}
       <div
-        className="w-full"
-        style={{ height: 130, backgroundColor: hex, border: "1px solid rgba(0,0,0,0.06)" }}
+        className="w-full bg-center bg-cover"
+        style={{
+          height: 130,
+          backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
+          backgroundColor: !imageUrl ? hex : undefined,
+          border: "1px solid rgba(0,0,0,0.06)",
+        }}
       />
+
       {/* Label */}
       <div className="px-2 py-2 w-full text-center">
-        <p className="font-['Poppins'] font-bold text-xs text-[#242424] leading-tight">{name}</p>
+        <p className="font-['Poppins'] font-bold text-xs text-[#242424] leading-tight">
+          {name}
+        </p>
         <p className="font-['Poppins'] text-xs text-[#666]">({code})</p>
       </div>
+
       {/* View image button */}
       <button
+        type="button"
         className="w-full bg-[#242424] hover:bg-[#414042] transition text-white font-['Poppins'] text-xs py-2"
         onClick={(e) => {
           e.stopPropagation();
           onViewImage();
         }}
-        type="button"
       >
         View Image
       </button>
@@ -166,11 +210,19 @@ interface ImageSwatchProps {
   onZoom?: () => void;
 }
 
-export function ImageSwatch({ name, imageUrl, selected, onSelect, onZoom }: ImageSwatchProps) {
+export function ImageSwatch({
+  name,
+  imageUrl,
+  selected,
+  onSelect,
+  onZoom,
+}: ImageSwatchProps) {
   return (
     <button
       className={`flex-shrink-0 flex flex-col items-center rounded-lg border-2 overflow-hidden transition ${
-        selected ? "border-[#414042] bg-[#f5f5f5] shadow-md" : "border-[#e0e0e0] bg-white hover:border-[#b0b0b0]"
+        selected
+          ? "border-[#414042] bg-[#f5f5f5] shadow-md"
+          : "border-[#e0e0e0] bg-white hover:border-[#b0b0b0]"
       }`}
       onClick={onSelect}
       style={{ width: 130 }}

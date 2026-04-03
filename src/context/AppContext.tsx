@@ -72,7 +72,7 @@ interface AppState {
     roomId: string,
     roomName: string,
     productImage: string,
-    config?: ProductConfig,
+    config?: ProductConfig
   ) => void;
   handleDeleteProduct: (roomId: string, productId: string) => void;
   handleUpdateRoomName: (roomId: string, newName: string) => void;
@@ -96,7 +96,7 @@ const DEFAULT_PROPERTY: PropertyInfo = {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   // Navigation
-  const [currentPage, setCurrentPage] = useState<Page>("landing");
+  const [currentPage, setCurrentPage] = useState<Page>("seriesSelection");
   const [previousPage, setPreviousPage] = useState<Page>("landing");
 
   const navigateTo = useCallback((page: Page, savePrevious = false) => {
@@ -151,7 +151,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     { id: "room-1", name: "Room 1" },
   ]);
   const [kitchenInfo, setKitchenInfo] = useState<KitchenInfo | undefined>(
-    undefined,
+    undefined
   );
   const [selectedProjectId, setSelectedProjectId] = useState("1");
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -166,12 +166,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       roomId: string,
       roomName: string,
       productImage: string,
-      config?: ProductConfig,
+      config?: ProductConfig
     ) => {
       const price = calculateProductPrice(
         selectedArea,
         selectedProductId,
-        config,
+        config
       );
 
       const newProduct: CartProduct = {
@@ -188,7 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return prev.map((r, i) =>
             i === existingIdx
               ? { ...r, products: [...r.products, newProduct] }
-              : r,
+              : r
           );
         }
         return [
@@ -202,7 +202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ];
       });
     },
-    [selectedArea, selectedProductId],
+    [selectedArea, selectedProductId]
   );
 
   const handleDeleteProduct = useCallback(
@@ -215,21 +215,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   ...room,
                   products: room.products.filter((p) => p.id !== productId),
                 }
-              : room,
+              : room
           )
-          .filter((room) => room.products.length > 0),
+          .filter((room) => room.products.length > 0)
       );
     },
-    [],
+    []
   );
 
   const handleUpdateRoomName = useCallback(
     (roomId: string, newName: string) => {
       setCartItems((prev) =>
-        prev.map((r) => (r.id === roomId ? { ...r, name: newName } : r)),
+        prev.map((r) => (r.id === roomId ? { ...r, name: newName } : r))
       );
     },
-    [],
+    []
   );
 
   const clearCart = useCallback(() => setCartItems([]), []);
