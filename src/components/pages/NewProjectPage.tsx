@@ -1,6 +1,7 @@
-import { useState, type FormEvent, type ChangeEvent } from "react";
+import { useState, type FormEvent, type ChangeEvent, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import type { PropertyInfo } from "@/types";
+import { api } from "@/services/api";
 
 const PROPERTY_TYPES = ["BTO", "Resale", "Condo", "Landed"] as const;
 
@@ -67,7 +68,21 @@ export default function NewProjectPage() {
   const [keyDate, setKeyDate] = useState("15th September 2025");
   const [floorplan, setFloorplan] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+ const [user, setUser] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    api.user
+      .me(localStorage.getItem("jia_user_id") || "")
+      .then((data) => {
+        const project = data.response;
+        setUser(project);
+        console.log("Fetched user data:", project);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+
+  }, []);
   function validate() {
     const e: Record<string, string> = {};
     if (!zipCode.match(/^\d{6}$/))

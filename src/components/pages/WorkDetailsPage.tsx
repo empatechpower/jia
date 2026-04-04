@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { api, PortfolioProject } from "@/services/api";
+import { api } from "@/services/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -380,7 +380,7 @@ export default function WorkDetailsPage() {
           onClose={() => setLightboxIndex(null)}
           onNext={() =>
             setLightboxIndex((i) =>
-              Math.min((i ?? 0) + 1, workDetails?.ListOfImg.length - 1)
+              Math.min((i ?? 0) + 1, workDetails?.ListOfImg.length - 1),
             )
           }
           onPrev={() => setLightboxIndex((i) => Math.max((i ?? 0) - 1, 0))}
