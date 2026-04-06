@@ -71,7 +71,7 @@ export default function PortfolioPage() {
     setCurrentPage(isLoggedIn ? "newProject" : "login");
   }
   const [works, setWorks] = useState<PortfolioProject[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   useEffect(() => {
     api.portfolio
       .list()

@@ -5,7 +5,6 @@
 import { useApp } from "@/context/AppContext";
 import { resolveSeriesName } from "@/utils";
 import { CartIconWithBadge } from "@/assets/icons";
-import { useEffect, useState } from "react";
 
 // Series data lives here or in a data file — move to /data/series.ts when it grows.
 const WARDROBE_SERIES = [
@@ -37,19 +36,19 @@ export default function SeriesSelectionPage() {
   } = useApp();
 
   const series = selectedArea === "kitchen" ? KITCHEN_SERIES : WARDROBE_SERIES;
-  const [workDetails, setWorkDetails] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+  // const [, setWorkDetails] = useState<any | null>(null);
+  // const [, setLoading] = useState(true);
 
-  useEffect(() => {
-    api.portfolio
-      .single(selectedProjectId)
-      .then((data) => {
-        const project = data.response.results;
-        setWorkDetails(project);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  // useEffect(() => {
+  //   api.portfolio
+  //     .single(selectedProjectId)
+  //     .then((data) => {
+  //       const project = data.response.results;
+  //       setWorkDetails(project);
+  //     })
+  //     .catch(console.error)
+  //     .finally(() => setLoading(false));
+  // }, []);
   function handleSelect(id: string) {
     setSelectedSeriesId(id);
     setSelectedSeries(resolveSeriesName(id));

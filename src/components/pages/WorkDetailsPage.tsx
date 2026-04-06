@@ -217,7 +217,7 @@ export default function WorkDetailsPage() {
 
   const project = getProjectDetails(selectedProjectId);
   const [workDetails, setWorkDetails] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     api.portfolio

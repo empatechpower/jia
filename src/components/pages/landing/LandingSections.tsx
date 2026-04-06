@@ -144,11 +144,11 @@ export function ServicesSection({
 
 // ─── Featured Works ───────────────────────────────────────────────────────────
 
-interface Work {
-  img: string;
-  title: string;
-  location: string;
-}
+// interface Work {
+//   img: string;
+//   title: string;
+//   location: string;
+// }
 
 interface FeaturedWorksSectionProps {
   onViewAll: () => void;

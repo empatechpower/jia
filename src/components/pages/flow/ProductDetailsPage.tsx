@@ -160,13 +160,13 @@ export default function ProductDetailsPage() {
   const drawerCount = DRAWER_COUNT[productId] ?? 0;
   const isDrawerProduct = drawerCount > 0;
   const [colors, setColors] = useState<any[] | null>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [works, setWorks] = useState<any>();
   const widthOptions: string[] = isKitchenProduct
     ? getAvailableWidths(productId)
     : isLShapeProduct
-    ? ["400mm", "450mm", "500mm"]
-    : ["400mm", "450mm", "500mm", "800mm", "900mm", "1000mm"];
+      ? ["400mm", "450mm", "500mm"]
+      : ["400mm", "450mm", "500mm", "800mm", "900mm", "1000mm"];
 
   const [cfg, setCfg] = useState<ProductConfig>({
     ...EMPTY_CONFIG,
@@ -227,7 +227,7 @@ export default function ProductDetailsPage() {
   const discounted = totalBeforeDiscount * 0.8;
 
   const [openSection, setOpenSection] = useState<string | null>(
-    "internal-color"
+    "internal-color",
   );
   const toggle = (id: string) => setOpenSection((s) => (s === id ? null : id));
 
@@ -251,7 +251,7 @@ export default function ProductDetailsPage() {
 
   const [showCartModal, setShowCartModal] = useState(false);
   const [zoomImg, setZoomImg] = useState<{ url: string; alt: string } | null>(
-    null
+    null,
   );
   const [showMoreInfo, setShowMoreInfo] = useState(false);
 
@@ -262,7 +262,7 @@ export default function ProductDetailsPage() {
       selectedRoomId,
       selectedRoom,
       productImage,
-      cfg as any
+      cfg as any,
     );
     setSelectedProductConfig(undefined);
     setShowSuccessMessage(true);
@@ -276,7 +276,7 @@ export default function ProductDetailsPage() {
   }
 
   const selectedLaminateName = LAMINATE_COLORS.find(
-    (c) => c.id === cfg.externalColor
+    (c) => c.id === cfg.externalColor,
   )?.name;
 
   function renderDoorOptions() {
@@ -855,7 +855,7 @@ export default function ProductDetailsPage() {
                             <div className="flex flex-wrap gap-2">
                               {(
                                 HANDLE_DESIGNS.find(
-                                  (h) => h.id === cfg.handleDesign
+                                  (h) => h.id === cfg.handleDesign,
                                 )?.colorOptions ?? []
                               ).map((col) => (
                                 <Pill

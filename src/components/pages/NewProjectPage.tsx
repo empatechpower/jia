@@ -74,10 +74,9 @@ export default function NewProjectPage() {
   const [unit, setUnit] = useState("");
   const [numRooms, setNumRooms] = useState("");
   const [keyDate, setKeyDate] = useState("");
-  const [floorplan, setFloorplan] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [user, setUser] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setUser] = useState<any | null>(null);
+  const [, setLoading] = useState(true);
   const [floorplanFile, setFloorplanFile] = useState<File | null>(null);
   const [floorplanUrl, setFloorplanUrl] = useState<string>(""); // from API
   const [formData, setFormData] = useState<FormData>({
