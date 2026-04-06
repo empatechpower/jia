@@ -50,7 +50,7 @@ export interface ProductConfig {
 
 export interface PropertyInfo {
   propertyType: string;
-  isOwnProperty: boolean;
+  isOwnProperty: string;
   zipCode: string;
   unit: string;
   keyDate: string;

@@ -5,6 +5,7 @@
 import { useApp } from "@/context/AppContext";
 import { resolveSeriesName } from "@/utils";
 import { CartIconWithBadge } from "@/assets/icons";
+import { useEffect, useState } from "react";
 
 // Series data lives here or in a data file — move to /data/series.ts when it grows.
 const WARDROBE_SERIES = [
@@ -36,7 +37,19 @@ export default function SeriesSelectionPage() {
   } = useApp();
 
   const series = selectedArea === "kitchen" ? KITCHEN_SERIES : WARDROBE_SERIES;
+  const [workDetails, setWorkDetails] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    api.portfolio
+      .single(selectedProjectId)
+      .then((data) => {
+        const project = data.response.results;
+        setWorkDetails(project);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
   function handleSelect(id: string) {
     setSelectedSeriesId(id);
     setSelectedSeries(resolveSeriesName(id));
@@ -50,15 +63,29 @@ export default function SeriesSelectionPage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage("roomSelection")}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
           </svg>
           <span className="font-['Poppins'] text-sm">Back</span>
         </button>
         <h1 className="font-['Poppins'] font-semibold text-white text-base capitalize">
           {selectedArea} Series
         </h1>
-        <button aria-label={`Cart, ${cartItemCount} items`} className="p-2" onClick={() => navigateTo("cart", true)}>
+        <button
+          aria-label={`Cart, ${cartItemCount} items`}
+          className="p-2"
+          onClick={() => navigateTo("cart", true)}
+        >
           <CartIconWithBadge color="#FFFFFF" count={cartItemCount} />
         </button>
       </header>
@@ -77,8 +104,18 @@ export default function SeriesSelectionPage() {
                 <span className="font-['Poppins'] font-medium text-[#1C1B1F] group-hover:text-[#332e28]">
                   {label}
                 </span>
-                <svg className="w-5 h-5 text-gray-400 group-hover:text-[#332e28]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+                <svg
+                  className="w-5 h-5 text-gray-400 group-hover:text-[#332e28]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M9 18l6-6-6-6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                  />
                 </svg>
               </button>
             </li>

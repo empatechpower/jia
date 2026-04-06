@@ -56,33 +56,66 @@ function RadioGroup({ options, value, onChange, label }: RadioGroupProps) {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+type Ownership = "own" | "rented";
 
+interface FormData {
+  propertyType: string;
+  ownership: Ownership;
+  zipCode: string;
+  unit: string;
+  numRooms: string;
+  keyDate: string; // YYYY-MM-DD
+}
 export default function NewProjectPage() {
   const { setCurrentPage, setNumberOfRooms, setPropertyInfo } = useApp();
-
-  const [propertyType, setPropertyType] = useState<string>("BTO");
-  const [isOwnProperty, setIsOwnProperty] = useState(true);
-  const [zipCode, setZipCode] = useState("612512");
-  const [unit, setUnit] = useState("#04-10");
-  const [numRooms, setNumRooms] = useState("4");
-  const [keyDate, setKeyDate] = useState("15th September 2025");
+  const [propertyType, setPropertyType] = useState<string>("");
+  const [isOwnProperty, setIsOwnProperty] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [unit, setUnit] = useState("");
+  const [numRooms, setNumRooms] = useState("");
+  const [keyDate, setKeyDate] = useState("");
   const [floorplan, setFloorplan] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
- const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-
+  const [floorplanFile, setFloorplanFile] = useState<File | null>(null);
+  const [floorplanUrl, setFloorplanUrl] = useState<string>(""); // from API
+  const [formData, setFormData] = useState<FormData>({
+    propertyType: "BTO",
+    ownership: "own",
+    zipCode: "",
+    unit: "",
+    numRooms: "",
+    keyDate: "",
+  });
   useEffect(() => {
     api.user
       .me(localStorage.getItem("jia_user_id") || "")
       .then((data) => {
-        const project = data.response;
+        const project = data.response.user;
         setUser(project);
+
+        // 👇 populate form fields from API
+        setPropertyType(project.Property_Type_Text || "BTO");
+        setIsOwnProperty(project.isThisYourProperty ?? "");
+        setZipCode(project.zipCode || "");
+        setUnit(project.addressUnit || "");
+        setNumRooms(project.AmountOfRooms?.toString() || "");
+
+        if (project.Floor_Plan_PDF) {
+          setFloorplanUrl(project.Floor_Plan_PDF);
+        }
         console.log("Fetched user data:", project);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-
   }, []);
+  const updateField = (field: keyof FormData, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
   function validate() {
     const e: Record<string, string> = {};
     if (!zipCode.match(/^\d{6}$/))
@@ -113,7 +146,13 @@ export default function NewProjectPage() {
   }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    setFloorplan(e.target.files?.[0] ?? null);
+    const file = e.target.files?.[0] ?? null;
+    setFloorplanFile(file);
+
+    // If user uploads a new file, clear old URL
+    if (file) {
+      setFloorplanUrl("");
+    }
   }
 
   return (
@@ -177,18 +216,18 @@ export default function NewProjectPage() {
             </legend>
             <div className="flex gap-2">
               {[
-                { label: "Own Property", value: true },
-                { label: "Rented Property", value: false },
+                { label: "Own Property", value: "own" },
+                { label: "Rented Property", value: "rented" },
               ].map(({ label, value }) => (
                 <button
+                  key={label}
+                  type="button"
+                  onClick={() => updateField("ownership", value)}
                   className={`px-4 py-2 rounded-full border font-['Poppins'] text-sm transition ${
-                    isOwnProperty === value
+                    formData.ownership === value
                       ? "bg-[#332e28] text-white border-[#332e28]"
                       : "bg-white text-[#414042] border-gray-300 hover:border-[#332e28]"
                   }`}
-                  key={label}
-                  onClick={() => setIsOwnProperty(value)}
-                  type="button"
                 >
                   {label}
                 </button>
@@ -259,7 +298,7 @@ export default function NewProjectPage() {
             <input
               className="w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28]"
               onChange={(e) => setKeyDate(e.target.value)}
-              type="text"
+              type="date"
               value={keyDate}
             />
           </div>
@@ -268,7 +307,7 @@ export default function NewProjectPage() {
           <div>
             <label className="font-['Poppins'] text-sm text-[#414042] block mb-1">
               Upload Floorplan{" "}
-              <span className="text-[#999] font-normal">(optional)</span>
+              {/* <span className="text-[#999] font-normal">(optional)</span> */}
             </label>
             <label className="flex items-center gap-3 w-full bg-[#ececec] rounded-lg px-4 py-3 cursor-pointer hover:bg-[#e0e0e0] transition">
               <svg
@@ -279,8 +318,22 @@ export default function NewProjectPage() {
                 <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" />
               </svg>
               <span className="font-['Poppins'] text-sm text-[#878787]">
-                {floorplan ? floorplan.name : "Choose a file…"}
+                {floorplanFile
+                  ? floorplanFile.name
+                  : floorplanUrl
+                    ? "Existing file uploaded"
+                    : "Choose a file…"}
               </span>
+              {floorplanUrl && !floorplanFile && (
+                <a
+                  href={`https:${floorplanUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 underline mt-2 block"
+                >
+                  View current floorplan
+                </a>
+              )}
               <input
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="sr-only"

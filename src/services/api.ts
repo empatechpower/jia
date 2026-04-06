@@ -11,7 +11,7 @@
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const BASE = "https://jiaideas.com/version-test/api/1.1";
+const BASE = "https://jiaideas.com/api/1.1";
 // const VERSION =  "live"; // "live" | "test"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -52,6 +52,11 @@ export interface UserProfile {
   email: string;
   name: string;
   phone: string;
+  Property_Type_Text: string;
+  isThisYourProperty: string;
+  zipCode: string;
+  AmountOfRooms: number;
+  addressUnit: string;
   created_at: string;
 }
 
@@ -264,11 +269,11 @@ export const api = {
   user: {
     /** GET /obj/user/:id */
     me: (userId: string) =>
-      dataGet<{ response: UserProfile }>(`/get_current_user?id=${userId}`),
+      dataGet<{ response: any }>(`/get_current_user?id=${userId}`),
 
     /** PATCH /wf/update-profile */
-    update: (payload: Partial<UserProfile>) =>
-      request<UserProfile>("POST", "/update-profile", payload),
+    update: (payload: Partial<any>) =>
+      request<any>("POST", "/update-profile", payload),
   },
 
   // ── Products ─────────────────────────────────────────────────────────────
@@ -333,6 +338,11 @@ export const api = {
       return dataGet<{ response: BubbleList<Series> }>(
         "/series",
         constraints ? { constraints } : undefined,
+      );
+    },
+    get_category: () => {
+      return dataGet<{ response: BubbleList<PortfolioProject> }>(
+        "/get_carpentry_category",
       );
     },
   },
