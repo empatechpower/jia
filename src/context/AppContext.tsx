@@ -96,7 +96,7 @@ const DEFAULT_PROPERTY: PropertyInfo = {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   // Navigation
-  const [currentPage, setCurrentPage] = useState<Page>("seriesSelection");
+  const [currentPage, setCurrentPage] = useState<Page>("landing");
   const [previousPage, setPreviousPage] = useState<Page>("landing");
 
   const navigateTo = useCallback((page: Page, savePrevious = false) => {
