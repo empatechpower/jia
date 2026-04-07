@@ -11,7 +11,7 @@
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const BASE = "https://jiaideas.com/api/1.1";
+const BASE = "https://jiaideas.com/version-test/api/1.1";
 // const VERSION =  "live"; // "live" | "test"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -315,7 +315,9 @@ export const api = {
     },
 
     /** GET /obj/product/:id */
-    get: (id: string) => dataGet<{ response: Product }>(`/product/${id}`),
+    get_products: (id: string) =>
+      dataGet<{ response: any }>(`/get_a_carpentry_prroduct?type=${id}`),
+    get_handle_design: () => dataGet<{ response: any }>(`/get_handle_design`),
 
     /** GET /obj/kitchen_pricing?constraints=[{"key":"product_id"...}] */
     pricing: (productId: string) =>
@@ -343,6 +345,16 @@ export const api = {
     get_category: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
         "/get_carpentry_category",
+      );
+    },
+    get_type: (category: string) => {
+      return dataGet<{ response: BubbleList<PortfolioProject> }>(
+        `/get_carpentry_type?category=${category}`,
+      );
+    },
+    get_a_type: (category: string) => {
+      return dataGet<{ response: BubbleList<PortfolioProject> }>(
+        `/get_type_by_id?id=${category}`,
       );
     },
   },

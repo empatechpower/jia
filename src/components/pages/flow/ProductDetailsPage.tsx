@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
 import {
   getPrice,
@@ -138,7 +138,7 @@ function AddToCartModal({
 export default function ProductDetailsPage() {
   const {
     selectedProductName,
-    selectedProductId: productId,
+    selectedProductId: typeId,
     selectedRoom,
     selectedRoomId,
     selectedArea,
@@ -154,20 +154,17 @@ export default function ProductDetailsPage() {
   } = useApp();
 
   const isKitchenProduct =
-    selectedArea === "kitchen" && !!kitchenProductPricing[productId];
+    selectedArea === "kitchen" && !!kitchenProductPricing[typeId];
   const isTopHungSeries = selectedSeriesId === "top-hung-cabinet";
-  const isLShapeProduct = productId === "w22" || productId === "w23";
-  const drawerCount = DRAWER_COUNT[productId] ?? 0;
+  const isLShapeProduct = typeId === "w22" || typeId === "w23";
+  const drawerCount = DRAWER_COUNT[typeId] ?? 0;
   const isDrawerProduct = drawerCount > 0;
   const [colors, setColors] = useState<any[] | null>([]);
   const [, setLoading] = useState(true);
   const [works, setWorks] = useState<any>();
-  const widthOptions: string[] = isKitchenProduct
-    ? getAvailableWidths(productId)
-    : isLShapeProduct
-      ? ["400mm", "450mm", "500mm"]
-      : ["400mm", "450mm", "500mm", "800mm", "900mm", "1000mm"];
-
+  const [products, setProducts] = useState<any[]>();
+  const [type, setType] = useState<any>();
+  const [handleDesign, setHandleDesign] = useState<any>();
   const [cfg, setCfg] = useState<ProductConfig>({
     ...EMPTY_CONFIG,
     ...((initialConfig as Partial<ProductConfig>) ?? {}),
@@ -177,35 +174,57 @@ export default function ProductDetailsPage() {
     (val: ProductConfig[K]) =>
       setCfg((prev) => ({ ...prev, [key]: val }));
 
-  const isSmallWidth =
-    !!cfg.width && ["400mm", "450mm", "500mm"].includes(cfg.width);
-  const isLargeWidth =
-    !!cfg.width && ["800mm", "900mm", "1000mm"].includes(cfg.width);
+  const isSmallWidth = ["400mm", "450mm", "500mm"].includes(cfg.width || "");
+  const isLargeWidth = ["800mm", "900mm", "1000mm"].includes(cfg.width || "");
   const currentDoorType =
-    isKitchenProduct && cfg.width
-      ? getDoorType(productId, cfg.width)
-      : undefined;
+    isKitchenProduct && cfg.width ? getDoorType(typeId, cfg.width) : undefined;
   const isKitchenSingleDoor = currentDoorType === "single";
-
+  const extractLengths = (data: any[]): string[] => {
+    return data
+      .map((item) => item.length)
+      .filter(Boolean) // remove undefined/null
+      .map((length) => length!.replace(/^L/i, ""));
+  };
   useEffect(() => {
-    api.portfolio
-      .laminate_color()
-      .then((data) => {
-        const project = data.response.results;
-        setColors(project);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    setLoading(true);
 
-    api.portfolio
-      .sample_products()
-      .then((data) => {
-        setWorks(data.response.results[0]);
+    Promise.all([
+      api.portfolio.laminate_color(),
+      api.portfolio.sample_products(),
+      api.products.get_handle_design(),
+    ])
+      .then(([colorRes, sampleRes, handleDesignRes]) => {
+        const colorsData = colorRes.response.results;
+        const worksData = sampleRes.response.results[0];
+        const handleDesignData = handleDesignRes.response.results;
+        console.log("handleDesignData:", handleDesignData);
+        setColors(colorsData);
+        setWorks(worksData);
+        setHandleDesign(handleDesignData);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+  useEffect(() => {
+    setLoading(true);
 
+    Promise.all([
+      api.series.get_a_type(typeId),
+      api.products.get_products(typeId),
+    ])
+      .then(([seriesRes, productsRes]) => {
+        const project = seriesRes.response.results;
+        const product = productsRes.response.results;
+
+        setType(project);
+        setProducts(product);
+
+        console.log("Series data:", project);
+        console.log("Products data:", product);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [typeId]);
   useEffect(() => {
     if (cfg.doorOption === "No Door") {
       setCfg((p) => ({ ...p, handleDesign: null, handleColor: null }));
@@ -222,7 +241,7 @@ export default function ProductDetailsPage() {
       ? 50 * drawerCount
       : 0;
   const basePrice =
-    isKitchenProduct && cfg.width ? getPrice(productId, cfg.width) : 100;
+    isKitchenProduct && cfg.width ? getPrice(typeId, cfg.width) : 100;
   const totalBeforeDiscount = basePrice + sidePanelCost + blumCost;
   const discounted = totalBeforeDiscount * 0.8;
 
@@ -281,22 +300,30 @@ export default function ProductDetailsPage() {
 
   function renderDoorOptions() {
     let options: string[];
-    if (!cfg.width) options = ["Timber Door", "No Door"];
+    if (!cfg.width)
+      options = [
+        "Single Timber Door",
+        "No Door",
+        "With aluminium single door with full height handle",
+      ];
     else if (isSmallWidth)
       options = [
         "Single Timber Door",
         "No Door",
         "With aluminium single door with full height handle",
-        "With Door",
       ];
     else if (isLargeWidth)
       options = [
         "Double Timber Door",
         "No Door",
         "With aluminium double door with full height handle",
-        "With Door",
       ];
-    else options = ["Timber Door", "No Door"];
+    else
+      options = [
+        "Single Timber Door",
+        "No Door",
+        "With aluminium single door with full height handle",
+      ];
     return (
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => (
@@ -310,7 +337,21 @@ export default function ProductDetailsPage() {
       </div>
     );
   }
+  const productWidth = useMemo(() => {
+    return extractLengths(products ?? []);
+  }, [products]);
 
+  const isLight = cfg.internalColor === "Light";
+
+  const mainImage = isLight
+    ? isSmallWidth
+      ? type?.photoLightSmall
+      : type?.photoLightBig
+    : isSmallWidth
+      ? type?.photoDarkSmall
+      : type?.photoDarkBig;
+
+  const sketchImage = isSmallWidth ? type?.sketchSmall : type?.sketchBig;
   return (
     <div
       className="min-h-screen w-full"
@@ -373,27 +414,22 @@ export default function ProductDetailsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
               {/* LEFT */}
               <div className="flex flex-col gap-4 lg:sticky lg:top-24 lg:self-start">
-                <div className="flex gap-3 overflow-hidden">
-                  {[0, 1].map((i) => (
-                    <button
-                      key={i}
-                      className="shrink-0 rounded-lg overflow-hidden shadow-md border border-gray-100 hover:opacity-90 transition"
-                      style={{ width: 145, height: 380 }}
-                      onClick={() =>
-                        setZoomImg({
-                          url: PRODUCT_GALLERY_IMAGES[i],
-                          alt:
-                            i === 0 ? selectedProductName : "Technical drawing",
-                        })
-                      }
-                    >
-                      <img
-                        alt={i === 0 ? "3D view" : "Technical drawing"}
-                        className="w-full h-full object-cover"
-                        src={PRODUCT_GALLERY_IMAGES[i]}
-                      />
-                    </button>
-                  ))}
+                <div className="flex h-[380px] gap-2">
+                  {type && (
+                    <img
+                      src={`https:${mainImage}`}
+                      alt={`${name} photo`}
+                      className="w-1/2 h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                    />
+                  )}
+
+                  {type && (
+                    <img
+                      src={`https:${sketchImage}`}
+                      alt={`${name} sketch`}
+                      className="w-1/2 h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  )}
                 </div>
 
                 {/* Price */}
@@ -463,7 +499,7 @@ export default function ProductDetailsPage() {
                       const imageUrl = url?.startsWith("http")
                         ? url
                         : `https:${url}`;
-                      console.log("works", works);
+
                       return (
                         <button
                           key={i}
@@ -509,7 +545,10 @@ export default function ProductDetailsPage() {
                           key={c}
                           label={c}
                           selected={cfg.internalColor === c}
-                          onClick={() => set("internalColor")(c)}
+                          onClick={() => {
+                            set("internalColor")(c);
+                            console.log("Selected internal color:", cfg);
+                          }}
                         />
                       ))}
                     </div>
@@ -555,7 +594,7 @@ export default function ProductDetailsPage() {
                     onToggle={() => toggle("width")}
                   >
                     <div className="flex flex-wrap gap-2 pt-1">
-                      {widthOptions.map((w) => (
+                      {productWidth?.map((w) => (
                         <Pill
                           key={w}
                           label={w}

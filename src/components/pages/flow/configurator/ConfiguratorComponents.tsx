@@ -158,7 +158,7 @@ export function ColorSwatch({
 }: ColorSwatchProps) {
   return (
     <div
-      className={`flex-shrink-0 flex flex-col items-center rounded-lg border-2 overflow-hidden transition cursor-pointer ${
+      className={`flex-shrink-0 flex justify-between flex-col items-center rounded-lg border-2 overflow-hidden transition cursor-pointer ${
         selected
           ? "border-[#414042]"
           : "border-[#e0e0e0] hover:border-[#b0b0b0]"

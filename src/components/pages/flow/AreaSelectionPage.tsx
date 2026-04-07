@@ -1,15 +1,3 @@
-/**
- * AreaSelectionPage
- *
- * Lifted from the original AreaSelectionPage.tsx.
- * All navigation and state mutations go through useApp() — no prop drilling.
- *
- * To complete: paste the full JSX from the original file here and replace:
- *   onBack()           → setCurrentPage("newProject")
- *   onSelectArea(a, k) → setSelectedArea(a); setKitchenInfo(k); setCurrentPage("roomSelection")
- *   onHome()           → setCurrentPage("landing")
- */
-
 import { useApp } from "@/context/AppContext";
 import type { KitchenInfo } from "@/types";
 
@@ -19,7 +7,13 @@ const AREAS = [
 ];
 
 export default function AreaSelectionPage() {
-  const { setCurrentPage, setSelectedArea, setKitchenInfo, numberOfRooms, setRooms } = useApp();
+  const {
+    setCurrentPage,
+    setSelectedArea,
+    setKitchenInfo,
+    numberOfRooms,
+    setRooms,
+  } = useApp();
 
   function handleSelect(areaId: string, kitchenData?: KitchenInfo) {
     setSelectedArea(areaId);
@@ -39,8 +33,18 @@ export default function AreaSelectionPage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage("newProject")}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
           </svg>
           <span className="font-['Poppins'] text-sm">Back</span>
         </button>

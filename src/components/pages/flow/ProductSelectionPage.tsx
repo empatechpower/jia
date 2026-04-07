@@ -5,6 +5,8 @@
 import { useApp } from "@/context/AppContext";
 import { resolveProductName } from "@/utils";
 import { CartIconWithBadge } from "@/assets/icons";
+import { useEffect, useState } from "react";
+import { api } from "@/services/api";
 
 const WARDROBE_PRODUCTS: Record<string, string[]> = {
   "hanging-drawers": ["type-a-d-d", "type-b-b-b-b"],
@@ -64,12 +66,28 @@ export default function ProductSelectionPage() {
     selectedArea === "kitchen"
       ? (KITCHEN_PRODUCTS[selectedSeriesId] ?? [])
       : (WARDROBE_PRODUCTS[selectedSeriesId] ?? []);
+  const [type, setType] = useState<any | null>(null);
 
+  const [, setLoading] = useState(true);
   function handleSelect(id: string) {
     setSelectedProductId(id);
-    setSelectedProductName(resolveProductName(id));
+
     setCurrentPage("productDetails");
   }
+  function handleSelectName(name: string) {
+    setSelectedProductName(name);
+  }
+
+  useEffect(() => {
+    api.series
+      .get_type(selectedSeriesId)
+      .then((data) => {
+        const project = data.response.results;
+        setType(project);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [selectedSeriesId]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -110,37 +128,63 @@ export default function ProductSelectionPage() {
           Select a Product
         </h2>
 
-        {productIds.length === 0 ? (
+        {type && type.length === 0 ? (
           <p className="font-['DM_Sans'] text-[#666]">
             No products available for this series yet.
           </p>
         ) : (
-          <ul className="space-y-3">
-            {productIds.map((id) => (
-              <li key={id}>
-                <button
-                  className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl hover:border-[#332e28] transition group text-left"
-                  onClick={() => handleSelect(id)}
-                >
-                  <span className="font-['Poppins'] font-medium text-[#1C1B1F] group-hover:text-[#332e28]">
-                    {resolveProductName(id)}
-                  </span>
-                  <svg
-                    className="w-5 h-5 text-gray-400 group-hover:text-[#332e28]"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+          <ul className="grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-4">
+            {type?.map(
+              ({
+                _id,
+                code,
+                photoLightSmall,
+                sketchSmall,
+              }: {
+                _id: string;
+                code: string;
+                photoLightSmall?: string;
+                sketchSmall?: string;
+              }) => (
+                <li key={_id}>
+                  <button
+                    className="w-full flex flex-col border-2 border-gray-200 rounded-xl hover:border-[#332e28] transition group text-left overflow-hidden"
+                    onClick={() => {
+                      handleSelect(_id);
+                      handleSelectName(code);
+                    }}
                   >
-                    <path
-                      d="M9 18l6-6-6-6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                    />
-                  </svg>
-                </button>
-              </li>
-            ))}
+                    {/* Image area */}
+                    <div className="w-full aspect-square  overflow-hidden p-2">
+                      <div className="flex h-full gap-2">
+                        {photoLightSmall && (
+                          <img
+                            src={`https:${photoLightSmall}`}
+                            alt={`${name} photo`}
+                            className="w-1/2 h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+
+                        {sketchSmall && (
+                          <img
+                            src={`https:${sketchSmall}`}
+                            alt={`${name} sketch`}
+                            className="w-1/2 h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Label */}
+                    <div className="p-3 border-t border-gray-200">
+                      <span className="font-['Poppins'] font-medium text-[#1C1B1F] text-sm group-hover:text-[#332e28]">
+                        Type {code}
+                      </span>
+                    </div>
+                  </button>
+                </li>
+              ),
+            )}
           </ul>
         )}
       </main>
