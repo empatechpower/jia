@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ChangeEvent, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import type { PropertyInfo } from "@/types";
 import { api } from "@/services/api";
+import { CartIconWithBadge } from "@/assets/icons";
 
 const PROPERTY_TYPES = ["BTO", "Resale", "Condo", "Landed"] as const;
 
@@ -67,7 +68,13 @@ interface FormData {
   keyDate: string; // YYYY-MM-DD
 }
 export default function NewProjectPage() {
-  const { setCurrentPage, setNumberOfRooms, setPropertyInfo } = useApp();
+  const {
+    setCurrentPage,
+    setNumberOfRooms,
+    setPropertyInfo,
+    cartItemCount,
+    navigateTo,
+  } = useApp();
   const [propertyType, setPropertyType] = useState<string>("");
   const [isOwnProperty, setIsOwnProperty] = useState("");
   const [zipCode, setZipCode] = useState("");
@@ -157,14 +164,13 @@ export default function NewProjectPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Top bar */}
-      <header className="bg-[#332e28] px-4 md:px-8 lg:px-[76px] py-4 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-100 px-5 py-3.5 flex items-center justify-between relative">
         <button
-          aria-label="Back"
-          className="flex items-center gap-2 text-white hover:opacity-70 transition"
-          onClick={() => setCurrentPage("landing")}
+          onClick={() => setCurrentPage("newProject")}
+          className="text-gray-900 hover:opacity-60 transition"
         >
           <svg
-            className="w-5 h-5"
+            className="w-6 h-6"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -176,17 +182,27 @@ export default function NewProjectPage() {
               strokeWidth={2}
             />
           </svg>
-          <span className="font-['Poppins'] text-sm">Back</span>
         </button>
-        <h1 className="font-['Poppins'] font-semibold text-white text-base">
+
+        <span className="absolute left-1/2 -translate-x-1/2 font-semibold text-[15px] text-gray-900">
           New Project
-        </h1>
-        <button
-          className="font-['Poppins'] text-sm text-white hover:opacity-70 transition"
-          onClick={() => setCurrentPage("landing")}
-        >
-          Cancel
-        </button>
+        </span>
+
+        <div className="flex items-center gap-2.5">
+          <span
+            onClick={() => navigateTo("landing", true)}
+            className="bg-[#7b7267] cursor-pointer text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg"
+          >
+            Home
+          </span>
+          <button
+            aria-label={`Cart, ${cartItemCount} items`}
+            className="p-2 hover:opacity-80 transition"
+            onClick={() => navigateTo("cart", true)}
+          >
+            <CartIconWithBadge color="#000000" count={cartItemCount} />
+          </button>
+        </div>
       </header>
 
       {/* Form */}
@@ -211,7 +227,7 @@ export default function NewProjectPage() {
 
           <fieldset>
             <legend className="font-['Poppins'] text-sm text-[#414042] mb-2">
-              Ownership
+              Is this your property?
             </legend>
             <div className="flex gap-2">
               {[

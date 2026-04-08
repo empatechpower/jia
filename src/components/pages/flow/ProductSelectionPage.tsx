@@ -91,13 +91,13 @@ export default function ProductSelectionPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="bg-[#332e28] px-4 md:px-8 lg:px-[76px] py-4 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-100 px-5 py-3.5 flex items-center justify-between relative">
         <button
-          className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage("seriesSelection")}
+          className="text-gray-900 hover:opacity-60 transition"
         >
           <svg
-            className="w-5 h-5"
+            className="w-6 h-6"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -109,21 +109,36 @@ export default function ProductSelectionPage() {
               strokeWidth={2}
             />
           </svg>
-          <span className="font-['Poppins'] text-sm">Back</span>
         </button>
-        <h1 className="font-['Poppins'] font-semibold text-white text-base">
-          {selectedSeries}
-        </h1>
-        <button
-          aria-label={`Cart, ${cartItemCount} items`}
-          className="p-2"
-          onClick={() => navigateTo("cart", true)}
-        >
-          <CartIconWithBadge color="#FFFFFF" count={cartItemCount} />
-        </button>
+
+        <span className="absolute left-1/2 -translate-x-1/2 font-semibold text-[15px] text-gray-900">
+          New Project
+        </span>
+
+        <div className="flex items-center gap-2.5">
+          <span
+            onClick={() => navigateTo("landing", true)}
+            className="bg-[#7b7267] cursor-pointer text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg"
+          >
+            Home
+          </span>
+          <button
+            aria-label={`Cart, ${cartItemCount} items`}
+            className="p-2 hover:opacity-80 transition"
+            onClick={() => navigateTo("cart", true)}
+          >
+            <CartIconWithBadge color="#000000" count={cartItemCount} />
+          </button>
+        </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 md:px-8 py-10">
+        <p className="text-xs text-gray-400 mb-2.5">
+          New Project &gt;{" "}
+          <span className="text-gray-600 font-medium">{selectedArea}</span>
+          &gt;{" "}
+          <span className="text-gray-600 font-medium">{selectedSeries}</span>
+        </p>
         <h2 className="font-['Poppins'] font-bold text-2xl text-[#1C1B1F] mb-8">
           Select a Product
         </h2>

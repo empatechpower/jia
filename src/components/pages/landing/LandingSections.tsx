@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/services/api";
 import type { PortfolioProject } from "@/services/api";
+import { useApp } from "@/context/AppContext";
 // ─── Image URL constants (replace with real assets or env vars) ───────────────
 const IMG = {
   modularCarpentry: "/images/service1.png",
@@ -157,6 +158,7 @@ interface FeaturedWorksSectionProps {
 export function FeaturedWorksSection({ onViewAll }: FeaturedWorksSectionProps) {
   const [works, setWorks] = useState<PortfolioProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const { setCurrentPage, setSelectedProjectId } = useApp();
   useEffect(() => {
     api.portfolio
       .list()
@@ -166,6 +168,11 @@ export function FeaturedWorksSection({ onViewAll }: FeaturedWorksSectionProps) {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+  function handleProjectClick(id: string) {
+    setSelectedProjectId(id);
+    setCurrentPage("workDetails");
+  }
+
   return (
     <section
       aria-label="Featured Works"
@@ -210,7 +217,11 @@ export function FeaturedWorksSection({ onViewAll }: FeaturedWorksSectionProps) {
               .filter((work) => work.featured === "Yes")
               .slice(0, 3)
               .map((work) => (
-                <div className="flex flex-col gap-4" key={work._id}>
+                <div
+                  className="flex flex-col gap-4 cursor-pointer"
+                  key={work._id}
+                  onClick={() => handleProjectClick(work._id)}
+                >
                   <div className="relative w-full aspect-square rounded-bl-[24px] rounded-tr-[24px] shadow-[0px_0px_17px_2px_rgba(0,0,0,0.25)] overflow-hidden">
                     <img
                       alt={work.Name}

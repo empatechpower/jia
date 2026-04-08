@@ -182,8 +182,13 @@ export default function ProductDetailsPage() {
   const extractLengths = (data: any[]): string[] => {
     return data
       .map((item) => item.length)
-      .filter(Boolean) // remove undefined/null
-      .map((length) => length!.replace(/^L/i, ""));
+      .filter(Boolean)
+      .map((length) => length!.replace(/^L/i, ""))
+      .sort((a, b) => {
+        const numA = parseInt(a); // 400mm → 400
+        const numB = parseInt(b);
+        return numA - numB;
+      });
   };
   useEffect(() => {
     setLoading(true);
@@ -427,7 +432,7 @@ export default function ProductDetailsPage() {
                     <img
                       src={`https:${sketchImage}`}
                       alt={`${name} sketch`}
-                      className="w-1/2 h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-1/2 h-full object-contain group-hover:scale-105 transition-transform duration-300"
                     />
                   )}
                 </div>
@@ -944,62 +949,63 @@ export default function ProductDetailsPage() {
                     )}
 
                   {/* Drawer Lock */}
-                  {!isKitchenProduct &&
-                    !isTopHungSeries &&
-                    !isLShapeProduct && (
-                      <Accordion
-                        id="drawer-lock"
-                        title="Add Drawer Lock"
-                        subtitle={
-                          cfg.addLock
-                            ? `${cfg.addLock}${
-                                cfg.addLock === "Yes" && cfg.numberOfLocks
-                                  ? ` (${cfg.numberOfLocks})`
-                                  : ""
-                              }`
-                            : undefined
-                        }
-                        isOpen={openSection === "drawer-lock"}
-                        isComplete={complete["drawer-lock"]}
-                        onToggle={() => toggle("drawer-lock")}
-                      >
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <Pill
-                            label="Yes"
-                            selected={cfg.addLock === "Yes"}
-                            onClick={() => set("addLock")("Yes")}
-                          />
-                          <Pill
-                            label="No"
-                            selected={cfg.addLock === "No"}
-                            onClick={() => {
-                              set("addLock")("No");
-                              set("numberOfLocks")(null);
-                            }}
-                          />
-                        </div>
-                        {cfg.addLock === "Yes" && (
-                          <>
-                            <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
-                              Number of Locks
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {["1", "2", "3"].map((n) => (
-                                <Pill
-                                  key={n}
-                                  label={n}
-                                  selected={cfg.numberOfLocks === n}
-                                  onClick={() => set("numberOfLocks")(n)}
-                                />
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </Accordion>
-                    )}
+                  {type?.drawer === true && (
+                    <Accordion
+                      id="drawer-lock"
+                      title="Add Drawer Lock"
+                      subtitle={
+                        cfg.addLock
+                          ? `${cfg.addLock}${
+                              cfg.addLock === "Yes" && cfg.numberOfLocks
+                                ? ` (${cfg.numberOfLocks})`
+                                : ""
+                            }`
+                          : undefined
+                      }
+                      isOpen={openSection === "drawer-lock"}
+                      isComplete={complete["drawer-lock"]}
+                      onToggle={() => toggle("drawer-lock")}
+                    >
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <Pill
+                          label="Yes"
+                          selected={cfg.addLock === "Yes"}
+                          onClick={() => set("addLock")("Yes")}
+                        />
+                        <Pill
+                          label="No"
+                          selected={cfg.addLock === "No"}
+                          onClick={() => {
+                            set("addLock")("No");
+                            set("numberOfLocks")(null);
+                          }}
+                        />
+                      </div>
+                      {cfg.addLock === "Yes" && (
+                        <>
+                          <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
+                            Number of Locks
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {Array.from(
+                              { length: type?.numberOfDrawers },
+                              (_, i) => String(i + 1),
+                            ).map((n) => (
+                              <Pill
+                                key={n}
+                                label={n}
+                                selected={cfg.numberOfLocks === n}
+                                onClick={() => set("numberOfLocks")(n)}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </Accordion>
+                  )}
 
                   {/* LED Strip */}
-                  {!isTopHungSeries && (
+                  {type?.ledLight === true && (
                     <Accordion
                       id="led-strip"
                       title="LED Strip"
