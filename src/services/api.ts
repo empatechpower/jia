@@ -185,7 +185,6 @@ export interface PortfolioProject {
   client: string;
   featureImg: string;
   Special: string;
-
   duration: string;
   Name: string;
   size: string;
@@ -200,7 +199,7 @@ async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
-  token?: string | null,
+  token?: string | null
 ): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -227,7 +226,7 @@ async function request<T>(
 // Helper for Bubble's Data API (GET list/single)
 async function dataGet<T>(
   path: string,
-  params?: Record<string, string>,
+  params?: Record<string, string>
 ): Promise<T> {
   const url = new URL(`${BASE}/wf${path}`);
   if (params)
@@ -318,6 +317,8 @@ export const api = {
     get_products: (id: string) =>
       dataGet<{ response: any }>(`/get_a_carpentry_prroduct?type=${id}`),
     get_handle_design: () => dataGet<{ response: any }>(`/get_handle_design`),
+    get_aluminium_finishing: () =>
+      dataGet<{ response: any }>(`/get_aluminium_door_finishing`),
 
     /** GET /obj/kitchen_pricing?constraints=[{"key":"product_id"...}] */
     pricing: (productId: string) =>
@@ -339,22 +340,22 @@ export const api = {
         : undefined;
       return dataGet<{ response: BubbleList<Series> }>(
         "/series",
-        constraints ? { constraints } : undefined,
+        constraints ? { constraints } : undefined
       );
     },
     get_category: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_carpentry_category",
+        "/get_carpentry_category"
       );
     },
     get_type: (category: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_carpentry_type?category=${category}`,
+        `/get_carpentry_type?category=${category}`
       );
     },
     get_a_type: (category: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_type_by_id?id=${category}`,
+        `/get_type_by_id?id=${category}`
       );
     },
   },
@@ -364,7 +365,7 @@ export const api = {
   projects: {
     /** POST /wf/create-project */
     create: (
-      payload: Omit<Project, "_id" | "user_id" | "created_at" | "status">,
+      payload: Omit<Project, "_id" | "user_id" | "created_at" | "status">
     ) => request<{ project_id: string }>("POST", "/create-project", payload),
 
     /** GET /obj/project?constraints=[...] — list for current user */
@@ -443,22 +444,22 @@ export const api = {
   portfolio: {
     list: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_portfolio",
+        "/get_portfolio"
       );
     },
     laminate_color: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_carpentry_external_colors",
+        "/get_carpentry_external_colors"
       );
     },
     sample_products: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_sample_products",
+        "/get_sample_products"
       );
     },
     single: (id: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_a_portfolio?id=${id}`,
+        `/get_a_portfolio?id=${id}`
       );
     },
   },

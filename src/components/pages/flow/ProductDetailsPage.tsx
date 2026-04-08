@@ -163,6 +163,7 @@ export default function ProductDetailsPage() {
   const [, setLoading] = useState(true);
   const [works, setWorks] = useState<any>();
   const [products, setProducts] = useState<any[]>();
+  const [aluminium, setAluminium] = useState<any[]>();
   const [type, setType] = useState<any>();
   const [handleDesign, setHandleDesign] = useState<any>();
   const [cfg, setCfg] = useState<ProductConfig>({
@@ -197,15 +198,19 @@ export default function ProductDetailsPage() {
       api.portfolio.laminate_color(),
       api.portfolio.sample_products(),
       api.products.get_handle_design(),
+      api.products.get_aluminium_finishing(),
     ])
-      .then(([colorRes, sampleRes, handleDesignRes]) => {
+      .then(([colorRes, sampleRes, handleDesignRes, aluminiumDesign]) => {
         const colorsData = colorRes.response.results;
         const worksData = sampleRes.response.results[0];
         const handleDesignData = handleDesignRes.response.results;
+        const handleAluminiumDesignData = aluminiumDesign.response.results;
+
         console.log("handleDesignData:", handleDesignData);
         setColors(colorsData);
         setWorks(worksData);
         setHandleDesign(handleDesignData);
+        setAluminium(handleAluminiumDesignData);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -251,7 +256,7 @@ export default function ProductDetailsPage() {
   const discounted = totalBeforeDiscount * 0.8;
 
   const [openSection, setOpenSection] = useState<string | null>(
-    "internal-color",
+    "internal-color"
   );
   const toggle = (id: string) => setOpenSection((s) => (s === id ? null : id));
 
@@ -275,7 +280,7 @@ export default function ProductDetailsPage() {
 
   const [showCartModal, setShowCartModal] = useState(false);
   const [zoomImg, setZoomImg] = useState<{ url: string; alt: string } | null>(
-    null,
+    null
   );
   const [showMoreInfo, setShowMoreInfo] = useState(false);
 
@@ -286,7 +291,7 @@ export default function ProductDetailsPage() {
       selectedRoomId,
       selectedRoom,
       productImage,
-      cfg as any,
+      cfg as any
     );
     setSelectedProductConfig(undefined);
     setShowSuccessMessage(true);
@@ -300,7 +305,7 @@ export default function ProductDetailsPage() {
   }
 
   const selectedLaminateName = LAMINATE_COLORS.find(
-    (c) => c.id === cfg.externalColor,
+    (c) => c.id === cfg.externalColor
   )?.name;
 
   function renderDoorOptions() {
@@ -353,10 +358,49 @@ export default function ProductDetailsPage() {
       ? type?.photoLightSmall
       : type?.photoLightBig
     : isSmallWidth
-      ? type?.photoDarkSmall
-      : type?.photoDarkBig;
+    ? type?.photoDarkSmall
+    : type?.photoDarkBig;
 
   const sketchImage = isSmallWidth ? type?.sketchSmall : type?.sketchBig;
+  function getLengthData(apiResponse: any, selectedLength: string) {
+    return apiResponse?.response?.results?.find(
+      (item: any) => item.length === selectedLength
+    );
+  }
+
+  function cleanLength(item: any) {
+    return {
+      length: item.length,
+
+      withDoor15: item["15% with door "] ?? 0,
+      withDoor20: item["20% with door"] ?? 0,
+
+      withoutDoor15: item["15% without door price"] ?? 0,
+      withoutDoor20: item["20% without door"] ?? 0,
+
+      ledPrice: item["led light price"] ?? 0,
+
+      casementDoor: item["casement door price"] ?? 0,
+      slidingDoor: item["sliding door price "] ?? 0,
+    };
+  }
+
+  const lengthData = cleanLength(getLengthData(products, cfg.width ?? ""));
+  function buildAddonsPricing(apiResponse: any) {
+    const r = apiResponse?.response?.results;
+
+    return {
+      blumRunnerPerDrawer: r?.blumRunnerCost || 0,
+
+      drawerLock: r?.drawerLockCost || 0, // (if exists later)
+
+      handleDesign: {}, // if you add API later
+
+      aluminiumFrameColor: {}, // if you add API later
+
+      ledLightSupported: r?.ledLight || false,
+    };
+  }
   return (
     <div
       className="min-h-screen w-full"
@@ -701,118 +745,6 @@ export default function ProductDetailsPage() {
                       <div className="space-y-4">
                         {renderDoorOptions()}
 
-                        {(cfg.doorOption === "Single Timber Door" ||
-                          (cfg.doorOption === "Timber Door" &&
-                            isSmallWidth)) && (
-                          <div>
-                            <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
-                              Casement Door Opening
-                            </p>
-                            <div className="flex gap-2">
-                              {["Left", "Right"].map((s) => (
-                                <Pill
-                                  key={s}
-                                  label={s}
-                                  selected={cfg.casementDoorOpening === s}
-                                  onClick={() => set("casementDoorOpening")(s)}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {isSmallWidth && cfg.doorOption === "With Door" && (
-                          <>
-                            <div>
-                              <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
-                                Casement Door Opening
-                              </p>
-                              <div className="flex gap-2">
-                                {["Left", "Right"].map((s) => (
-                                  <Pill
-                                    key={s}
-                                    label={s}
-                                    selected={cfg.casementDoorOpening === s}
-                                    onClick={() =>
-                                      set("casementDoorOpening")(s)
-                                    }
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                            <div>
-                              <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
-                                Casement Door Aluminum Frame Tempered Glass
-                                (Optional)
-                              </p>
-                              <div className="flex gap-2">
-                                {["Yes", "No"].map((v) => (
-                                  <Pill
-                                    key={v}
-                                    label={v}
-                                    selected={cfg.casementAluminumFrame === v}
-                                    onClick={() =>
-                                      set("casementAluminumFrame")(v)
-                                    }
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                            <div>
-                              <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
-                                Casement Door Finishing
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {DOOR_FINISHINGS.map((f) => (
-                                  <Pill
-                                    key={f}
-                                    label={f}
-                                    selected={cfg.casementFinishing === f}
-                                    onClick={() => set("casementFinishing")(f)}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          </>
-                        )}
-
-                        {isLargeWidth && cfg.doorOption === "With Door" && (
-                          <>
-                            <div>
-                              <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
-                                Casement Door in Aluminum Frame (Optional)
-                              </p>
-                              <div className="flex gap-2">
-                                {["Casement Door", "No Thanks"].map((v) => (
-                                  <Pill
-                                    key={v}
-                                    label={v}
-                                    selected={cfg.doorTypeOptional === v}
-                                    onClick={() => set("doorTypeOptional")(v)}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                            {cfg.doorTypeOptional === "Casement Door" && (
-                              <div>
-                                <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
-                                  Casement Door Finishing
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                  {DOOR_FINISHINGS.map((f) => (
-                                    <Pill
-                                      key={f}
-                                      label={f}
-                                      selected={cfg.slidingFinishing === f}
-                                      onClick={() => set("slidingFinishing")(f)}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
-
                         {(cfg.doorOption ===
                           "With aluminium single door with full height handle" ||
                           cfg.doorOption ===
@@ -841,20 +773,22 @@ export default function ProductDetailsPage() {
                                   Aluminium Door Finishing
                                 </p>
                                 <SwatchRow>
-                                  {ALUMINIUM_FINISHINGS.map((f) => (
+                                  {aluminium?.map((f) => (
                                     <ImageSwatch
-                                      key={f.id}
+                                      key={f._id}
                                       name={f.name}
-                                      imageUrl={f.imageUrl}
+                                      imageUrl={
+                                        "https://images.unsplash.com/photo-1758985142652-2e9c88d88bb4?w=400&q=80"
+                                      }
                                       selected={
-                                        cfg.aluminiumDoorFinishing === f.id
+                                        cfg.aluminiumDoorFinishing === f._id
                                       }
                                       onSelect={() =>
-                                        set("aluminiumDoorFinishing")(f.id)
+                                        set("aluminiumDoorFinishing")(f._id)
                                       }
                                       onZoom={() =>
                                         setZoomImg({
-                                          url: f.imageUrl,
+                                          url: "https://images.unsplash.com/photo-1758985142652-2e9c88d88bb4?w=400&q=80",
                                           alt: f.name,
                                         })
                                       }
@@ -866,24 +800,30 @@ export default function ProductDetailsPage() {
                           </>
                         )}
 
-                        {cfg.doorOption && cfg.doorOption !== "No Door" && (
+                        {(cfg.doorOption === "Single Timber Door" ||
+                          cfg.doorOption === "Double Timber Door") && (
                           <div>
                             <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
                               Handle Design
                             </p>
                             <SwatchRow>
-                              {HANDLE_DESIGNS.map((h) => (
+                              {handleDesign.map((h: any) => (
                                 <ImageSwatch
-                                  key={h.id}
+                                  key={h._id}
                                   name={h.name}
-                                  imageUrl={h.imageUrl}
-                                  selected={cfg.handleDesign === h.id}
+                                  imageUrl={
+                                    "https://images.unsplash.com/photo-1738520420690-9680253bf40b?w=400&q=80"
+                                  }
+                                  selected={cfg.handleDesign === h._id}
                                   onSelect={() => {
-                                    set("handleDesign")(h.id);
+                                    set("handleDesign")(h._id);
                                     set("handleColor")(null);
                                   }}
                                   onZoom={() =>
-                                    setZoomImg({ url: h.imageUrl, alt: h.name })
+                                    setZoomImg({
+                                      url: "https://images.unsplash.com/photo-1738520420690-9680253bf40b?w=400&q=80",
+                                      alt: h.name,
+                                    })
                                   }
                                 />
                               ))}
@@ -891,27 +831,28 @@ export default function ProductDetailsPage() {
                           </div>
                         )}
 
-                        {cfg.handleDesign && (
-                          <div>
-                            <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
-                              Handle Design Color
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {(
-                                HANDLE_DESIGNS.find(
-                                  (h) => h.id === cfg.handleDesign,
-                                )?.colorOptions ?? []
-                              ).map((col) => (
-                                <Pill
-                                  key={col}
-                                  label={col}
-                                  selected={cfg.handleColor === col}
-                                  onClick={() => set("handleColor")(col)}
-                                />
-                              ))}
+                        {cfg.handleDesign &&
+                          cfg.doorOption === "Single Timber Door" && (
+                            <div>
+                              <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
+                                Handle Design Color
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {(
+                                  handleDesign.find(
+                                    (h: any) => h._id === cfg.handleDesign
+                                  )?.color ?? []
+                                ).map((col: any) => (
+                                  <Pill
+                                    key={col}
+                                    label={col}
+                                    selected={cfg.handleColor === col}
+                                    onClick={() => set("handleColor")(col)}
+                                  />
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
                       </div>
                     </Accordion>
                   )}
@@ -989,7 +930,7 @@ export default function ProductDetailsPage() {
                           <div className="flex flex-wrap gap-2">
                             {Array.from(
                               { length: type?.numberOfDrawers },
-                              (_, i) => String(i + 1),
+                              (_, i) => String(i + 1)
                             ).map((n) => (
                               <Pill
                                 key={n}
