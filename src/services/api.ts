@@ -11,7 +11,7 @@
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const BASE = "https://jiaideas.com/api/1.1";
+const BASE = "https://jiaideas.com/version-test/api/1.1";
 // const VERSION =  "live"; // "live" | "test"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -194,34 +194,64 @@ export interface PortfolioProject {
 // ─── HTTP helper ──────────────────────────────────────────────────────────────
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-
 async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
   token?: string | null,
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  const isFormData = body instanceof FormData;
 
-  // Bubble uses Bearer token from Bubble auth
+  const headers: Record<string, string> = {};
+
+  // Bubble auth
   const storedToken = token ?? localStorage.getItem("jia_token");
   if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
+
+  // ONLY set JSON header if NOT FormData
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
 
   const res = await fetch(`${BASE}/wf${path}`, {
     method,
     headers,
-    ...(body ? { body: JSON.stringify(body) } : {}),
+    body: isFormData ? body : body ? JSON.stringify(body) : undefined,
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: "Unknown error" }));
-    throw new Error(err.message ?? `HTTP ${res.status}`);
+    throw new Error(await res.text());
   }
 
-  return res.json() as Promise<T>;
+  return res.json();
 }
+// async function request<T>(
+//   method: Method,
+//   path: string,
+//   body?: unknown,
+//   token?: string | null,
+// ): Promise<T> {
+//   const headers: Record<string, string> = {
+//     "Content-Type": "application/json",
+//   };
+
+//   // Bubble uses Bearer token from Bubble auth
+//   const storedToken = token ?? localStorage.getItem("jia_token");
+//   if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
+
+//   const res = await fetch(`${BASE}/wf${path}`, {
+//     method,
+//     headers,
+//     ...(body ? { body: JSON.stringify(body) } : {}),
+//   });
+
+//   if (!res.ok) {
+//     const err = await res.json().catch(() => ({ message: "Unknown error" }));
+//     throw new Error(err.message ?? `HTTP ${res.status}`);
+//   }
+
+//   return res.json() as Promise<T>;
+// }
 
 // Helper for Bubble's Data API (GET list/single)
 async function dataGet<T>(
@@ -364,15 +394,25 @@ export const api = {
 
   projects: {
     /** POST /wf/create-project */
-    create: (
-      payload: Omit<Project, "_id" | "user_id" | "created_at" | "status">,
-    ) => request<{ project_id: string }>("POST", "/create-project", payload),
+    create: (payload: FormData) =>
+      request<{ project_id: string }>("POST", "/create_project", payload),
 
     /** GET /obj/project?constraints=[...] — list for current user */
-    list: () => dataGet<{ response: BubbleList<Project> }>("/project"),
+    list: () => dataGet<{ response: BubbleList<Project> }>("/get_user_project"),
 
     /** GET /obj/project/:id */
     get: (id: string) => dataGet<{ response: Project }>(`/project/${id}`),
+    update: (id: string, payload: FormData) => {
+      const fd = new FormData();
+
+      payload.forEach((value, key) => {
+        fd.append(key, value);
+      });
+
+      fd.append("project_id", id);
+
+      return request("POST", "/update_project", fd);
+    },
   },
 
   // ── Rooms ─────────────────────────────────────────────────────────────────

@@ -1,6 +1,5 @@
 import { useState, type FormEvent, type ChangeEvent, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
-import type { PropertyInfo } from "@/types";
 import { api } from "@/services/api";
 import { CartIconWithBadge } from "@/assets/icons";
 
@@ -75,12 +74,7 @@ export default function NewProjectPage() {
     cartItemCount,
     navigateTo,
   } = useApp();
-  const [propertyType, setPropertyType] = useState<string>("");
-  const [isOwnProperty, setIsOwnProperty] = useState("");
-  const [zipCode, setZipCode] = useState("");
-  const [unit, setUnit] = useState("");
-  const [numRooms, setNumRooms] = useState("");
-  const [keyDate, setKeyDate] = useState("");
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [, setUser] = useState<any | null>(null);
   const [, setLoading] = useState(true);
@@ -101,17 +95,28 @@ export default function NewProjectPage() {
         const project = data.response.user;
         setUser(project);
 
-        // 👇 populate form fields from API
-        setPropertyType(project.Property_Type_Text || "BTO");
-        setIsOwnProperty(project.isThisYourProperty ?? "");
-        setZipCode(project.zipCode || "");
-        setUnit(project.addressUnit || "");
-        setNumRooms(project.AmountOfRooms?.toString() || "");
+        setFormData({
+          propertyType: project.Property_Type_Text || "BTO",
+          ownership: project.isThisYourProperty ?? "",
+          zipCode: project.zipCode || "",
+          unit: project.addressUnit || "",
+          numRooms: project.AmountOfRooms?.toString() || "",
+          keyDate: project.keyDate || "",
+        });
 
         if (project.Floor_Plan_PDF) {
           setFloorplanUrl(project.Floor_Plan_PDF);
         }
-        console.log("Fetched user data:", project);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+    api.projects
+      .list()
+
+      .then((data) => {
+        const project = data.response.results[0];
+
+        console.log("Fetched user project", project);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -124,31 +129,121 @@ export default function NewProjectPage() {
   };
   function validate() {
     const e: Record<string, string> = {};
-    if (!zipCode.match(/^\d{6}$/))
+    if (!formData.zipCode.match(/^\d{6}$/))
       e.zipCode = "Please enter a valid 6-digit postal code.";
-    if (!unit) e.unit = "Unit number is required.";
-    const n = parseInt(numRooms, 10);
+    if (!formData.unit) e.unit = "Unit number is required.";
+    const n = parseInt(formData.numRooms, 10);
     if (isNaN(n) || n < 1 || n > 10)
       e.numRooms = "Number of rooms must be between 1 and 10.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  function handleSubmit(e: FormEvent) {
+  function mapToProjectPayload(
+    formData: any,
+    floorplanFile?: File,
+    floorplanUrl?: string,
+  ) {
+    const fd = new FormData();
+
+    fd.append("propertyType", formData.propertyType);
+    fd.append("propertyOwner", formData.ownership);
+    fd.append("postalCode", formData.zipCode);
+    fd.append("unit", formData.unit);
+    fd.append("roomNumber", formData.numRooms);
+    // fd.append("keyCollectionDate", formData.keyDate);
+    if (formData.keyDate) {
+      fd.append("keyCollectionDate", formData.keyDate);
+    }
+    // ✅ FILE HANDLING FIX
+    if (floorplanFile) {
+      fd.append("floorPlan", floorplanFile);
+    } else if (floorplanUrl) {
+      fd.append("floorPlan", floorplanUrl);
+    }
+
+    return fd;
+  }
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!validate()) return;
 
-    const info: PropertyInfo = {
-      propertyType,
-      isOwnProperty,
-      zipCode,
-      unit,
-      keyDate,
-    };
+    try {
+      setLoading(true);
 
-    setPropertyInfo(info);
-    setNumberOfRooms(parseInt(numRooms, 10));
-    setCurrentPage("areaSelection");
+      const payload = {
+        propertyType: formData.propertyType,
+        propertyOwner: formData.ownership,
+        zipCode: formData.zipCode,
+        unit: formData.unit,
+        keyCollectionDate: formData.keyDate,
+        // add file if exists
+        ...(floorplanFile && { floorPlan: floorplanFile }),
+      };
+
+      const res = await api.projects.list();
+
+      const existingProject = res?.response?.results?.[0];
+
+      let projectId: string;
+
+      if (!existingProject) {
+        // =========================
+        // ✅ CREATE
+        // =========================
+        console.log(
+          "No existing project found, creating new one with payload:",
+          formData,
+        );
+        const formDataPayload = mapToProjectPayload(
+          formData,
+          floorplanFile ?? undefined,
+          floorplanUrl,
+        );
+        console.log("Submitting new project with payload:", [
+          ...formDataPayload.entries(),
+        ]);
+        const createRes = await api.projects.create(formDataPayload);
+
+        projectId = createRes.project_id;
+
+        console.log("Created project:", projectId);
+      } else {
+        // =========================
+        // ✅ UPDATE
+        // =========================
+        projectId = existingProject._id;
+
+        const formDataPayload = new FormData();
+
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value) formDataPayload.append(key, value as any);
+        });
+
+        formDataPayload.append("project_id", projectId);
+        await api.projects.update(projectId, formDataPayload);
+
+        console.log("Updated project:", projectId);
+      }
+
+      // =========================
+      // NEXT STEP
+      // =========================
+      setPropertyInfo({
+        propertyType: formData.propertyType,
+        isOwnProperty: formData.ownership,
+        zipCode: formData.zipCode,
+        unit: formData.unit,
+        keyDate: formData.keyDate,
+      });
+
+      setNumberOfRooms(parseInt(formData.numRooms, 10));
+      setCurrentPage("areaSelection");
+    } catch (err) {
+      console.error("Submit failed:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -166,7 +261,7 @@ export default function NewProjectPage() {
       {/* Top bar */}
       <header className="bg-white border-b border-gray-100 px-5 py-3.5 flex items-center justify-between relative">
         <button
-          onClick={() => setCurrentPage("newProject")}
+          onClick={() => setCurrentPage("landing")}
           className="text-gray-900 hover:opacity-60 transition"
         >
           <svg
@@ -220,9 +315,9 @@ export default function NewProjectPage() {
         <form className="space-y-6" noValidate onSubmit={handleSubmit}>
           <RadioGroup
             label="Property type"
-            onChange={setPropertyType}
+            onChange={(value) => updateField("propertyType", value)}
             options={PROPERTY_TYPES}
-            value={propertyType}
+            value={formData.propertyType}
           />
 
           <fieldset>
@@ -261,10 +356,10 @@ export default function NewProjectPage() {
                 className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${errors.zipCode ? "ring-2 ring-red-400" : ""}`}
                 inputMode="numeric"
                 maxLength={6}
-                onChange={(e) => setZipCode(e.target.value)}
+                onChange={(e) => updateField("zipCode", e.target.value)}
                 placeholder="6-digit postal code"
                 type="text"
-                value={zipCode}
+                value={formData.zipCode}
               />
               {errors.zipCode && (
                 <p className="text-red-500 text-xs mt-1">{errors.zipCode}</p>
@@ -276,10 +371,10 @@ export default function NewProjectPage() {
               </label>
               <input
                 className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${errors.unit ? "ring-2 ring-red-400" : ""}`}
-                onChange={(e) => setUnit(e.target.value)}
+                onChange={(e) => updateField("unit", e.target.value)}
                 placeholder="#00-00"
                 type="text"
-                value={unit}
+                value={formData.unit}
               />
               {errors.unit && (
                 <p className="text-red-500 text-xs mt-1">{errors.unit}</p>
@@ -296,9 +391,9 @@ export default function NewProjectPage() {
               className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${errors.numRooms ? "ring-2 ring-red-400" : ""}`}
               max={10}
               min={1}
-              onChange={(e) => setNumRooms(e.target.value)}
+              onChange={(e) => updateField("numRooms", e.target.value)}
               type="number"
-              value={numRooms}
+              value={formData.numRooms}
             />
             {errors.numRooms && (
               <p className="text-red-500 text-xs mt-1">{errors.numRooms}</p>
@@ -312,9 +407,9 @@ export default function NewProjectPage() {
             </label>
             <input
               className="w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28]"
-              onChange={(e) => setKeyDate(e.target.value)}
+              onChange={(e) => updateField("keyDate", e.target.value)}
               type="date"
-              value={keyDate}
+              value={formData.keyDate}
             />
           </div>
 
