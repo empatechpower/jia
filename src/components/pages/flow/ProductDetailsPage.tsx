@@ -239,17 +239,27 @@ export default function ProductDetailsPage() {
     "internal-color": !!cfg.internalColor,
     "external-color": !!cfg.externalColor,
     width: !!cfg.width,
+
     door: isLShapeProduct || !!cfg.doorOption,
+
     "side-panel": isLShapeProduct || isTopHungSeries || !!cfg.sidePanel,
+
     "drawer-lock":
       isLShapeProduct ||
       isTopHungSeries ||
-      (!!cfg.addLock && (cfg.addLock === "No" || !!cfg.numberOfLocks)),
-    "led-strip": isTopHungSeries || !!cfg.ledStrip,
+      cfg.addLock === "No" ||
+      (!!cfg.numberOfLocks && cfg.addLock === "Yes"),
+
+    "led-strip":
+      isTopHungSeries || cfg.ledStrip === "Yes" || cfg.ledStrip === "No",
+
     "kitchen-casement":
       !isKitchenSingleDoor || !!cfg.kitchenCasementDoorOpening,
+
     "kitchen-blum":
-      !isDrawerProduct || isTopHungSeries || !!cfg.blumRunnerUpgrade,
+      isTopHungSeries ||
+      cfg.blumRunnerUpgrade === "Yes" ||
+      cfg.blumRunnerUpgrade === "No",
   };
   const isFormValid = Object.values(complete).every(Boolean);
 
@@ -455,6 +465,7 @@ export default function ProductDetailsPage() {
       lengthData,
     });
   }, [cfg, type, lengthData]);
+  console.log("Rendered with prices", cfg);
   return (
     <div
       className="min-h-screen w-full"
@@ -1023,7 +1034,33 @@ export default function ProductDetailsPage() {
                       </div>
                     </Accordion>
                   )}
+                  {/* Blum Runner */}
+                  {type?.drawer === true && (
+                    <Accordion
+                      id="kitchen-blum"
+                      title="Blum Runner Upgrade"
+                      subtitle={cfg.blumRunnerUpgrade ?? ""}
+                      isOpen={openSection === "kitchen-blum"}
+                      isComplete={complete["kitchen-blum"]}
+                      onToggle={() => toggle("kitchen-blum")}
+                    >
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <Pill
+                          label="Yes"
+                          selected={cfg.blumRunnerUpgrade === "Yes"}
+                          onClick={() => set("blumRunnerUpgrade")("Yes")}
+                        />
 
+                        <Pill
+                          label="No"
+                          selected={cfg.blumRunnerUpgrade === "No"}
+                          onClick={() => {
+                            set("blumRunnerUpgrade")("No");
+                          }}
+                        />
+                      </div>
+                    </Accordion>
+                  )}
                   {/* Remarks */}
                   <div>
                     <p className="font-['Poppins'] font-bold text-base text-[#242424] mb-2">
