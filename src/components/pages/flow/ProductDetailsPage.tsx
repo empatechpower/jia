@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
-import { getPrice, getDoorType } from "@/config/kitchenPricing";
+import { getDoorType } from "@/config/kitchenPricing";
 import {
   Accordion,
   Pill,
@@ -199,7 +199,6 @@ export default function ProductDetailsPage() {
         const handleDesignData = handleDesignRes.response.results;
         const handleAluminiumDesignData = aluminiumDesign.response.results;
 
-        console.log("handleDesignData:", handleDesignData);
         setColors(colorsData);
         setWorks(worksData);
         setHandleDesign(handleDesignData);
@@ -221,9 +220,6 @@ export default function ProductDetailsPage() {
 
         setType(project);
         setProducts(product);
-
-        console.log("Series data:", project);
-        console.log("Products data:", product);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -233,20 +229,6 @@ export default function ProductDetailsPage() {
       setCfg((p) => ({ ...p, handleDesign: null, handleColor: null }));
     }
   }, [cfg.doorOption]);
-
-  const sidePanelCost =
-    SIDE_PANEL_OPTIONS.find((o) => o.id === cfg.sidePanel)?.cost ?? 0;
-  const blumCost =
-    isKitchenProduct &&
-    !isTopHungSeries &&
-    isDrawerProduct &&
-    cfg.blumRunnerUpgrade === "Yes"
-      ? 50 * drawerCount
-      : 0;
-  const basePrice =
-    isKitchenProduct && cfg.width ? getPrice(typeId, cfg.width) : 100;
-  const totalBeforeDiscount = basePrice + sidePanelCost + blumCost;
-  const discounted = totalBeforeDiscount * 0.8;
 
   const [openSection, setOpenSection] = useState<string | null>(
     "internal-color",
@@ -448,7 +430,16 @@ export default function ProductDetailsPage() {
     // DRAWER LOCKS
     // =====================
     if (cfg?.addLock === "Yes") {
-      add((cfg?.numberOfLocks || 0) * 0); // (you don't have price yet)
+      add((cfg?.numberOfLocks || 0) * 15); // (you don't have price yet)
+    }
+
+    // =====================
+    // SIDE PANEL
+    // =====================
+    if (cfg?.sidePanel) {
+      const selected = SIDE_PANEL_OPTIONS.find((o) => o.id === cfg.sidePanel);
+
+      add(selected?.cost || 0);
     }
 
     return { original, discounted };
@@ -1061,10 +1052,10 @@ export default function ProductDetailsPage() {
               </p>
               <div className="flex items-baseline gap-2">
                 <span className="font-['Poppins'] font-bold text-2xl text-[#414042]">
-                  {formatPrice(discounted)}
+                  {formatPrice(prices?.original)}
                 </span>
                 <span className="font-['Poppins'] text-sm text-[#999] line-through">
-                  {formatPrice(totalBeforeDiscount)}
+                  {formatPrice(prices?.discounted)}
                 </span>
                 <span className="px-2 py-0.5 bg-red-100 text-red-700 font-['Poppins'] font-bold text-xs rounded-full">
                   20% OFF
