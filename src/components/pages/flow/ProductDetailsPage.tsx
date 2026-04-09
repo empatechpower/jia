@@ -1,10 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
-import {
-  getPrice,
-  getAvailableWidths,
-  getDoorType,
-} from "@/config/kitchenPricing";
+import { getPrice, getDoorType } from "@/config/kitchenPricing";
 import {
   Accordion,
   Pill,
@@ -15,9 +11,6 @@ import {
 import {
   LAMINATE_COLORS,
   SIDE_PANEL_OPTIONS,
-  HANDLE_DESIGNS,
-  ALUMINIUM_FINISHINGS,
-  DOOR_FINISHINGS,
   PRODUCT_GALLERY_IMAGES,
   EMPTY_CONFIG,
   type ProductConfig,
@@ -256,7 +249,7 @@ export default function ProductDetailsPage() {
   const discounted = totalBeforeDiscount * 0.8;
 
   const [openSection, setOpenSection] = useState<string | null>(
-    "internal-color"
+    "internal-color",
   );
   const toggle = (id: string) => setOpenSection((s) => (s === id ? null : id));
 
@@ -280,9 +273,10 @@ export default function ProductDetailsPage() {
 
   const [showCartModal, setShowCartModal] = useState(false);
   const [zoomImg, setZoomImg] = useState<{ url: string; alt: string } | null>(
-    null
+    null,
   );
   const [showMoreInfo, setShowMoreInfo] = useState(false);
+  const [lengthData, setLengthData] = useState<any>(null);
 
   function handleConfirmAdd() {
     const productImage = PRODUCT_GALLERY_IMAGES[0];
@@ -291,7 +285,7 @@ export default function ProductDetailsPage() {
       selectedRoomId,
       selectedRoom,
       productImage,
-      cfg as any
+      cfg as any,
     );
     setSelectedProductConfig(undefined);
     setShowSuccessMessage(true);
@@ -305,7 +299,7 @@ export default function ProductDetailsPage() {
   }
 
   const selectedLaminateName = LAMINATE_COLORS.find(
-    (c) => c.id === cfg.externalColor
+    (c) => c.id === cfg.externalColor,
   )?.name;
 
   function renderDoorOptions() {
@@ -358,19 +352,21 @@ export default function ProductDetailsPage() {
       ? type?.photoLightSmall
       : type?.photoLightBig
     : isSmallWidth
-    ? type?.photoDarkSmall
-    : type?.photoDarkBig;
+      ? type?.photoDarkSmall
+      : type?.photoDarkBig;
 
   const sketchImage = isSmallWidth ? type?.sketchSmall : type?.sketchBig;
-  function getLengthData(apiResponse: any, selectedLength: string) {
-    return apiResponse?.response?.results?.find(
-      (item: any) => item.length === selectedLength
-    );
-  }
 
+  useEffect(() => {
+    if (!cfg?.width || !products?.length) return;
+
+    loadPricingData(cfg.width);
+  }, [cfg.width, products]);
   function cleanLength(item: any) {
+    if (!item) return null;
+
     return {
-      length: item.length,
+      length: item?.length,
 
       withDoor15: item["15% with door "] ?? 0,
       withDoor20: item["20% with door"] ?? 0,
@@ -385,22 +381,89 @@ export default function ProductDetailsPage() {
     };
   }
 
-  const lengthData = cleanLength(getLengthData(products, cfg.width ?? ""));
-  function buildAddonsPricing(apiResponse: any) {
-    const r = apiResponse?.response?.results;
+  const extractNumber = (val: any) =>
+    Number(String(val).match(/\d+/)?.[0] || 0);
+  async function loadPricingData(width: string) {
+    try {
+      const lengthItem = products?.find((item: any) => {
+        return extractNumber(item?.length) === extractNumber(width);
+      });
 
-    return {
-      blumRunnerPerDrawer: r?.blumRunnerCost || 0,
-
-      drawerLock: r?.drawerLockCost || 0, // (if exists later)
-
-      handleDesign: {}, // if you add API later
-
-      aluminiumFrameColor: {}, // if you add API later
-
-      ledLightSupported: r?.ledLight || false,
-    };
+      setLengthData(cleanLength(lengthItem));
+    } catch (err) {
+      console.error("Pricing load failed", err);
+    }
   }
+
+  function getBasePrices(lengthData: any, cfg: any) {
+    const isDoor = [
+      "Single Timber Door",
+      "Double Timber Door",
+      "With aluminium single door with full height handle",
+      "With aluminium double door with full height handle",
+    ].includes(cfg?.doorOption);
+
+    return isDoor
+      ? {
+          original: lengthData?.withDoor15 || 0,
+          discounted: lengthData?.withDoor20 || 0,
+        }
+      : {
+          original: lengthData?.withoutDoor15 || 0,
+          discounted: lengthData?.withoutDoor20 || 0,
+        };
+  }
+
+  function calculatePrices({ cfg, type, lengthData }: any) {
+    if (!lengthData || !type) {
+      return { original: 0, discounted: 0 };
+    }
+
+    const base = getBasePrices(lengthData, cfg);
+
+    let original = base.original;
+    let discounted = base.discounted;
+
+    const add = (v: number) => {
+      if (!v) return;
+      original += v;
+      discounted += v;
+    };
+
+    // =====================
+    // LED LIGHT
+    // =====================
+    if (cfg?.ledStrip === "Yes" && type?.ledLight) {
+      add(lengthData?.ledPrice);
+    }
+
+    // =====================
+    // BLUM RUNNER
+    // =====================
+    if (cfg?.blumRunnerUpgrade === "Yes") {
+      add((type?.numberOfDrawers || 0) * (type?.blumRunnerCost || 0));
+    }
+
+    // =====================
+    // DRAWER LOCKS
+    // =====================
+    if (cfg?.addLock === "Yes") {
+      add((cfg?.numberOfLocks || 0) * 0); // (you don't have price yet)
+    }
+
+    return { original, discounted };
+  }
+  const prices = useMemo(() => {
+    if (!lengthData || !type) {
+      return { original: 0, discounted: 0 };
+    }
+
+    return calculatePrices({
+      cfg,
+      type,
+      lengthData,
+    });
+  }, [cfg, type, lengthData]);
   return (
     <div
       className="min-h-screen w-full"
@@ -488,10 +551,10 @@ export default function ProductDetailsPage() {
                   </p>
                   <div className="flex items-baseline gap-3 flex-wrap">
                     <span className="font-['Poppins'] font-bold text-3xl text-[#414042]">
-                      {formatPrice(discounted)}
+                      {formatPrice(prices.original)}
                     </span>
                     <span className="font-['Poppins'] text-base text-[#999] line-through">
-                      {formatPrice(totalBeforeDiscount)}
+                      {formatPrice(prices.discounted)}
                     </span>
                     <span className="px-3 py-0.5 bg-red-100 text-red-700 font-['Poppins'] font-bold text-xs rounded-full">
                       20% OFF
@@ -840,7 +903,7 @@ export default function ProductDetailsPage() {
                               <div className="flex flex-wrap gap-2">
                                 {(
                                   handleDesign.find(
-                                    (h: any) => h._id === cfg.handleDesign
+                                    (h: any) => h._id === cfg.handleDesign,
                                   )?.color ?? []
                                 ).map((col: any) => (
                                   <Pill
@@ -930,7 +993,7 @@ export default function ProductDetailsPage() {
                           <div className="flex flex-wrap gap-2">
                             {Array.from(
                               { length: type?.numberOfDrawers },
-                              (_, i) => String(i + 1)
+                              (_, i) => String(i + 1),
                             ).map((n) => (
                               <Pill
                                 key={n}
