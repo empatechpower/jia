@@ -3,21 +3,12 @@
  * Wire original JSX here; swap prop callbacks for useApp().
  */
 import { useApp } from "@/context/AppContext";
-import { resolveSeriesName } from "@/utils";
+
 import { CartIconWithBadge } from "@/assets/icons";
 import { useEffect, useState } from "react";
 import { api } from "@/services/api";
 
 // Series data lives here or in a data file — move to /data/series.ts when it grows.
-const WARDROBE_SERIES = [
-  { id: "hanging-drawers", label: "Hanging and Drawers" },
-  { id: "shelvings-drawers", label: "Shelvings and Drawers" },
-  { id: "long-hanging", label: "Long Hanging" },
-  { id: "2-tier-hanging", label: "2 Tier Hanging" },
-  { id: "shelvings-only", label: "Shelvings Only" },
-  { id: "hanging-drawers-open", label: "Hanging & Drawers / Open Combine" },
-  { id: "l-shape", label: "L-Shape" },
-];
 
 const KITCHEN_SERIES = [
   { id: "bottom-cabinet", label: "Bottom Cabinet" },
