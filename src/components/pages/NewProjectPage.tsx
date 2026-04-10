@@ -76,8 +76,9 @@ export default function NewProjectPage() {
   } = useApp();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [, setUser] = useState<any | null>(null);
+
   const [, setLoading] = useState(true);
+  const [project, setProject] = useState<any>();
   const [floorplanFile, setFloorplanFile] = useState<File | null>(null);
   const [floorplanUrl, setFloorplanUrl] = useState<string>(""); // from API
   const [formData, setFormData] = useState<FormData>({
@@ -89,34 +90,19 @@ export default function NewProjectPage() {
     keyDate: "",
   });
   useEffect(() => {
-    api.user
-      .me(localStorage.getItem("jia_user_id") || "")
+    api.projects
+      .get_user_project()
       .then((data) => {
-        const project = data.response.user;
-        setUser(project);
-
+        const project = data.response.results;
+        setProject(project);
         setFormData({
           propertyType: project.Property_Type_Text || "BTO",
-          ownership: project.isThisYourProperty ?? "",
-          zipCode: project.zipCode || "",
-          unit: project.addressUnit || "",
-          numRooms: project.AmountOfRooms?.toString() || "",
-          keyDate: project.keyDate || "",
+          ownership: project.propertyOwner ?? "",
+          zipCode: project.postalCode || "",
+          unit: project.unit || "",
+          numRooms: project.roomNumber?.toString() || "",
+          keyDate: project.keyCollectionDate || "",
         });
-
-        if (project.Floor_Plan_PDF) {
-          setFloorplanUrl(project.Floor_Plan_PDF);
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-    api.projects
-      .list()
-
-      .then((data) => {
-        const project = data.response.results[0];
-
-        console.log("Fetched user project", project);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -132,6 +118,8 @@ export default function NewProjectPage() {
     if (!formData.zipCode.match(/^\d{6}$/))
       e.zipCode = "Please enter a valid 6-digit postal code.";
     if (!formData.unit) e.unit = "Unit number is required.";
+    if (!formData.keyDate) e.keyDate = "Key collection date is required.";
+
     const n = parseInt(formData.numRooms, 10);
     if (isNaN(n) || n < 1 || n > 10)
       e.numRooms = "Number of rooms must be between 1 and 10.";
@@ -181,13 +169,9 @@ export default function NewProjectPage() {
         ...(floorplanFile && { floorPlan: floorplanFile }),
       };
 
-      const res = await api.projects.list();
-
-      const existingProject = res?.response?.results?.[0];
-
       let projectId: string;
 
-      if (!existingProject) {
+      if (!project) {
         // =========================
         // ✅ CREATE
         // =========================
@@ -212,10 +196,14 @@ export default function NewProjectPage() {
         // =========================
         // ✅ UPDATE
         // =========================
-        projectId = existingProject._id;
+        projectId = project._id;
 
-        const formDataPayload = new FormData();
-
+        // const formDataPayload = new FormData();
+        const formDataPayload = mapToProjectPayload(
+          formData,
+          floorplanFile ?? undefined,
+          floorplanUrl,
+        );
         Object.entries(payload).forEach(([key, value]) => {
           if (value) formDataPayload.append(key, value as any);
         });
@@ -255,7 +243,11 @@ export default function NewProjectPage() {
       setFloorplanUrl("");
     }
   }
-
+  const formatDate = (timestamp: number | string) => {
+    if (!timestamp) return "";
+    const date = new Date(Number(timestamp));
+    return date.toISOString().split("T")[0];
+  };
   return (
     <div className="min-h-screen bg-white">
       {/* Top bar */}
@@ -326,8 +318,8 @@ export default function NewProjectPage() {
             </legend>
             <div className="flex gap-2">
               {[
-                { label: "Own Property", value: "own" },
-                { label: "Rented Property", value: "rented" },
+                { label: "Own Property", value: "Own Property" },
+                { label: "Rented Property", value: "Rented Property" },
               ].map(({ label, value }) => (
                 <button
                   key={label}
@@ -409,7 +401,7 @@ export default function NewProjectPage() {
               className="w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28]"
               onChange={(e) => updateField("keyDate", e.target.value)}
               type="date"
-              value={formData.keyDate}
+              value={formatDate(formData.keyDate)}
             />
           </div>
 
