@@ -103,8 +103,8 @@ export default function NewProjectPage() {
           numRooms: project.roomNumber?.toString() || "",
           keyDate: project.keyCollectionDate || "",
         });
-        if (project.Floor_Plan_PDF) {
-          setFloorplanUrl(project.Floor_Plan_PDF);
+        if (project.floorPlan) {
+          setFloorplanUrl(project.floorPlan);
         }
       })
       .catch(console.error)
@@ -126,6 +126,9 @@ export default function NewProjectPage() {
     const n = parseInt(formData.numRooms, 10);
     if (isNaN(n) || n < 1 || n > 10)
       e.numRooms = "Number of rooms must be between 1 and 10.";
+    if (!floorplanFile && !floorplanUrl) {
+      e.floorPlan = "Floor plan is required.";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }

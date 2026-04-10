@@ -10,9 +10,9 @@
  */
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const BASE = "https://jiaideas.com/api/1.1";
+// const BASE = "https://jiaideas.com/api/1.1";
 
-// const BASE = "https://jiaideas.com/version-test/api/1.1";
+const BASE = "https://jiaideas.com/version-test/api/1.1";
 // const VERSION =  "live"; // "live" | "test"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -393,12 +393,10 @@ export const api = {
 
   rooms: {
     /** POST /wf/create-room */
-    create: (payload: {
-      project_id: string;
-      name: string;
-      area: "wardrobe" | "kitchen";
-    }) => request<{ room_id: string }>("POST", "/create-room", payload),
-
+    create: (payload: { area: string }) =>
+      request<{ room_id: string }>("POST", "/create-room", payload),
+    listByUser: (area: string) =>
+      dataGet<{ response: any }>(`/get_user_rooms?area=${area}`),
     /** PATCH /wf/rename-room */
     rename: (roomId: string, name: string) =>
       request<void>("POST", "/rename-room", { room_id: roomId, name }),
