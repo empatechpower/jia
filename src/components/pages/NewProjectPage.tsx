@@ -103,6 +103,9 @@ export default function NewProjectPage() {
           numRooms: project.roomNumber?.toString() || "",
           keyDate: project.keyCollectionDate || "",
         });
+        if (project.Floor_Plan_PDF) {
+          setFloorplanUrl(project.Floor_Plan_PDF);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
