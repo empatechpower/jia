@@ -54,6 +54,7 @@ export interface PropertyInfo {
   zipCode: string;
   unit: string;
   keyDate: string;
+  projectId?: string;
 }
 
 export interface KitchenInfo {

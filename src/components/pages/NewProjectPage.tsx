@@ -136,7 +136,7 @@ export default function NewProjectPage() {
   function mapToProjectPayload(
     formData: any,
     floorplanFile?: File,
-    floorplanUrl?: string,
+    floorplanUrl?: string
   ) {
     const fd = new FormData();
 
@@ -183,21 +183,17 @@ export default function NewProjectPage() {
         // =========================
         console.log(
           "No existing project found, creating new one with payload:",
-          formData,
+          formData
         );
         const formDataPayload = mapToProjectPayload(
           formData,
           floorplanFile ?? undefined,
-          floorplanUrl,
+          floorplanUrl
         );
-        console.log("Submitting new project with payload:", [
-          ...formDataPayload.entries(),
-        ]);
+
         const createRes = await api.projects.create(formDataPayload);
 
         projectId = createRes.project_id;
-
-        console.log("Created project:", projectId);
       } else {
         // =========================
         // ✅ UPDATE
@@ -208,7 +204,7 @@ export default function NewProjectPage() {
         const formDataPayload = mapToProjectPayload(
           formData,
           floorplanFile ?? undefined,
-          floorplanUrl,
+          floorplanUrl
         );
         Object.entries(payload).forEach(([key, value]) => {
           if (value) formDataPayload.append(key, value as any);
@@ -229,6 +225,7 @@ export default function NewProjectPage() {
         zipCode: formData.zipCode,
         unit: formData.unit,
         keyDate: formData.keyDate,
+        projectId: projectId,
       });
 
       setNumberOfRooms(parseInt(formData.numRooms, 10));
@@ -351,7 +348,9 @@ export default function NewProjectPage() {
               </label>
               <input
                 autoComplete="postal-code"
-                className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${errors.zipCode ? "ring-2 ring-red-400" : ""}`}
+                className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${
+                  errors.zipCode ? "ring-2 ring-red-400" : ""
+                }`}
                 inputMode="numeric"
                 maxLength={6}
                 onChange={(e) => updateField("zipCode", e.target.value)}
@@ -368,7 +367,9 @@ export default function NewProjectPage() {
                 Unit Number
               </label>
               <input
-                className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${errors.unit ? "ring-2 ring-red-400" : ""}`}
+                className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${
+                  errors.unit ? "ring-2 ring-red-400" : ""
+                }`}
                 onChange={(e) => updateField("unit", e.target.value)}
                 placeholder="#00-00"
                 type="text"
@@ -386,7 +387,9 @@ export default function NewProjectPage() {
               Number of Rooms
             </label>
             <input
-              className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${errors.numRooms ? "ring-2 ring-red-400" : ""}`}
+              className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${
+                errors.numRooms ? "ring-2 ring-red-400" : ""
+              }`}
               max={10}
               min={1}
               onChange={(e) => updateField("numRooms", e.target.value)}
@@ -429,8 +432,8 @@ export default function NewProjectPage() {
                 {floorplanFile
                   ? floorplanFile.name
                   : floorplanUrl
-                    ? "Existing file uploaded"
-                    : "Choose a file…"}
+                  ? "Existing file uploaded"
+                  : "Choose a file…"}
               </span>
               {floorplanUrl && !floorplanFile && (
                 <a

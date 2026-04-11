@@ -1,10 +1,12 @@
 import { useApp } from "@/context/AppContext";
 import { CartIconWithBadge } from "@/assets/icons";
+import { useEffect, useState } from "react";
+import { api } from "@/services/api";
 
 export default function RoomSelectionPage() {
   const {
     rooms,
-
+    propertyInfo,
     cartItemCount,
     setCurrentPage,
     setSelectedRoom,
@@ -13,16 +15,71 @@ export default function RoomSelectionPage() {
     showSuccessMessage,
     setShowSuccessMessage,
     cartItems,
-
+    numberOfRooms,
     selectedArea,
   } = useApp();
+  const [room, setRoom] = useState<any | null>(null);
+  const [, setLoading] = useState(true);
 
   function handleSelectRoom(roomId: string, roomName: string) {
     setSelectedRoomId(roomId);
     setSelectedRoom(roomName);
     setCurrentPage("seriesSelection");
   }
+  useEffect(() => {
+    if (!propertyInfo?.projectId || !numberOfRooms) return;
 
+    let isMounted = true;
+
+    const syncRooms = async () => {
+      setLoading(true);
+
+      try {
+        const res = await api.rooms.listByProject(propertyInfo.projectId ?? "");
+        const rooms = res?.response?.results || [];
+
+        if (!isMounted) return;
+
+        setRoom(rooms);
+
+        const missingCount = Number(numberOfRooms) - rooms.length;
+
+        // ✅ If more rooms needed → create them
+        if (missingCount > 0) {
+          const createPromises = Array.from({ length: missingCount }).map(
+            (_, i) =>
+              api.rooms.create({
+                project: propertyInfo.projectId ?? "",
+                area: selectedArea, // auto naming
+              })
+          );
+
+          await Promise.all(createPromises);
+
+          // ✅ Refetch updated rooms
+          const updated = await api.rooms.listByProject(
+            propertyInfo.projectId ?? ""
+          );
+
+          if (!isMounted) return;
+
+          setRoom(updated?.response?.results || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    syncRooms();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [propertyInfo?.projectId, numberOfRooms]);
+  console.log("propertyInfo?.projectId", propertyInfo?.projectId);
+  console.log("numberOfRooms", numberOfRooms);
   return (
     <div className="min-h-screen bg-white">
       <header className="bg-white border-b border-gray-100 px-5 py-3.5 flex items-center justify-between relative">
@@ -87,13 +144,13 @@ export default function RoomSelectionPage() {
         </h2>
 
         <ul className="space-y-3">
-          {rooms.map((room) => {
+          {room?.map((room: any) => {
             const cartRoom = cartItems.find((r) => r.id === room.id);
             return (
               <li key={room.id}>
                 <button
                   className="w-full flex items-center gap-4 p-4 border-2 border-gray-200 rounded-xl hover:border-[#332e28] transition text-left group"
-                  onClick={() => handleSelectRoom(room.id, room.name)}
+                  onClick={() => handleSelectRoom(room._id, room.name)}
                 >
                   <div className="flex-1">
                     <p className="font-['Poppins'] font-medium text-[#1C1B1F] group-hover:text-[#332e28]">

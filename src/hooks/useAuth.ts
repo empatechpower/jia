@@ -55,17 +55,16 @@ export function useAuth(): AuthHook {
         localStorage.setItem("jia_email", email); // since API doesn't return it
 
         handleLogin(email);
-      } catch (err: unknown) {
+      } catch (err: any) {
+        console.log("err", err?.message);
         setError(
-          err instanceof Error
-            ? err.message
-            : "Login failed. Please try again.",
+          err instanceof Error ? err.message : "Login failed. Please try again."
         );
       } finally {
         setLoading(false);
       }
     },
-    [handleLogin],
+    [handleLogin]
   );
   // const signup = useCallback(
   //   async (email: string, password: string, phone: string) => {
@@ -108,13 +107,13 @@ export function useAuth(): AuthHook {
         setError(
           err instanceof Error
             ? err.message
-            : "Sign up failed. Please try again.",
+            : "Sign up failed. Please try again."
         );
       } finally {
         setLoading(false);
       }
     },
-    [handleLogin],
+    [handleLogin]
   );
   const logout = useCallback(async () => {
     setLoading(true);
