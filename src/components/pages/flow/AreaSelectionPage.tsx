@@ -32,7 +32,7 @@ export default function AreaSelectionPage() {
     setSelectedArea(areaId);
     setKitchenInfo(kitchenData);
     const initialRooms = Array.from({ length: numberOfRooms }, (_, i) => ({
-      id: `room-${i + 1}`,
+      _id: `room-${i + 1}`,
       name: `Room ${i + 1}`,
     }));
     setRooms(initialRooms);

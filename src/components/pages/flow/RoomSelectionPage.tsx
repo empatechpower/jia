@@ -46,12 +46,11 @@ export default function RoomSelectionPage() {
 
         // ✅ If more rooms needed → create them
         if (missingCount > 0) {
-          const createPromises = Array.from({ length: missingCount }).map(
-            (_, i) =>
-              api.rooms.create({
-                project: propertyInfo.projectId ?? "",
-                area: selectedArea, // auto naming
-              }),
+          const createPromises = Array.from({ length: missingCount }).map((_) =>
+            api.rooms.create({
+              project: propertyInfo.projectId ?? "",
+              area: selectedArea, // auto naming
+            }),
           );
 
           await Promise.all(createPromises);

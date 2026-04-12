@@ -317,9 +317,9 @@ export function ShoppingCartPage() {
     handleDeleteProduct,
   } = useApp();
 
-  const [room, setRoom] = useState<any | null>(null);
+  // const [room, setRoom] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"cart" | "history">("cart");
-  const [categories, setCategories] = useState<any | null>(null);
+  const [, setCategories] = useState<any | null>(null);
   const [, setLoading] = useState(true);
 
   useEffect(() => {
