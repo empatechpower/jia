@@ -175,6 +175,7 @@ export interface ProductConfig {
   internalColor: string | null;
   externalColor: string | null;
   width: string | null;
+  width_id: string | null;
   doorOption: string | null;
   sidePanel: string | null;
   addLock: string | null;
@@ -185,7 +186,6 @@ export interface ProductConfig {
   aluminiumFrameColor: string | null;
   aluminiumDoorFinishing: string | null;
   remarks: string;
-
   kitchenCasementDoorOpening: string | null;
   blumRunnerUpgrade: string | null;
 }
@@ -194,11 +194,12 @@ export const EMPTY_CONFIG: ProductConfig = {
   internalColor: null,
   externalColor: null,
   width: null,
+  width_id: null,
   doorOption: null,
   sidePanel: null,
   addLock: null,
   numberOfLocks: null,
-  ledStrip: null,
+  ledStrip: "No",
   handleDesign: null,
   handleColor: null,
   aluminiumFrameColor: null,

@@ -22,12 +22,12 @@ export type Page =
 // ─── Domain Models ───────────────────────────────────────────────────────────
 
 export interface Room {
-  id: string;
+  _id: string;
   name: string;
 }
 
 export interface CartProduct {
-  id: string;
+  _id: string;
   name: string;
   price: number;
   image: string;
@@ -35,7 +35,7 @@ export interface CartProduct {
 }
 
 export interface CartRoom {
-  id: string;
+  _id: string;
   name: string;
   sketchImages: string[];
   renderImages?: string[];

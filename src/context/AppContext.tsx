@@ -148,7 +148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [propertyInfo, setPropertyInfo] =
     useState<PropertyInfo>(DEFAULT_PROPERTY);
   const [rooms, setRooms] = useState<Room[]>([
-    { id: "room-1", name: "Room 1" },
+    { _id: "room-1", name: "Room 1" },
   ]);
   const [kitchenInfo, setKitchenInfo] = useState<KitchenInfo | undefined>(
     undefined,
@@ -175,7 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
 
       const newProduct: CartProduct = {
-        id: `product-${Date.now()}`,
+        _id: `product-${Date.now()}`,
         name: productName,
         price,
         image: productImage,
@@ -183,7 +183,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
 
       setCartItems((prev) => {
-        const existingIdx = prev.findIndex((r) => r.id === roomId);
+        const existingIdx = prev.findIndex((r) => r._id === roomId);
         if (existingIdx >= 0) {
           return prev.map((r, i) =>
             i === existingIdx
@@ -194,7 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return [
           ...prev,
           {
-            id: roomId,
+            _id: roomId,
             name: roomName,
             sketchImages: [productImage],
             products: [newProduct],
@@ -210,10 +210,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCartItems((prev) =>
         prev
           .map((room) =>
-            room.id === roomId
+            room._id === roomId
               ? {
                   ...room,
-                  products: room.products.filter((p) => p.id !== productId),
+                  products: room.products.filter((p) => p._id !== productId),
                 }
               : room,
           )
@@ -226,7 +226,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const handleUpdateRoomName = useCallback(
     (roomId: string, newName: string) => {
       setCartItems((prev) =>
-        prev.map((r) => (r.id === roomId ? { ...r, name: newName } : r)),
+        prev.map((r) => (r._id === roomId ? { ...r, name: newName } : r)),
       );
     },
     [],

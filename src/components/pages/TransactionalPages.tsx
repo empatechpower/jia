@@ -1,9 +1,315 @@
+import { useState, useCallback, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
+import type { CartRoom, CartProduct } from "@/types";
+import { api } from "@/services/api";
 
-// ─── Shopping Cart ────────────────────────────────────────────────────────────
+// ─── Shared helpers ────────────────────────────────────────────────────────────
+
+function BackIcon() {
+  return (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M15 19l-7-7 7-7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
+function ChevronDown({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`w-5 h-5 transition-transform ${open ? "rotate-180" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M19 9l-7 7-7-7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
+/** Format a product config object into readable key-value pairs */
+function formatConfig(
+  config: Record<string, unknown>,
+): Array<{ label: string; value: string }> {
+  const labelMap: Record<string, string> = {
+    internalColor: "Internal color",
+    externalColor: "External color",
+    width: "Width",
+    doorOption: "Door Type",
+    casementDoorOpening: "Door Opens",
+    ledStrip: "LED Light",
+    sidePanel: "Side Panel",
+    addLock: "Drawer Lock",
+    numberOfLocks: "Number of Lock",
+    handleDesign: "Handle Design",
+    handleColor: "Handle Color",
+    aluminiumFrameColor: "Aluminium Frame",
+    aluminiumDoorFinishing: "Door Finishing",
+    blumRunnerUpgrade: "Blum Runner",
+    kitchenCasementDoorOpening: "Door Opens",
+    remarks: "Remarks",
+  };
+
+  const sidePanelLabels: Record<string, string> = {
+    "not-required": "Not required",
+    "upgrade-40mm": "Upgrade to 40mm",
+    "extra-18mm": "Add extra 18mm side panel: + $180",
+    "extra-40mm": "Add extra 40mm side panel: + $250",
+  };
+
+  const skip = new Set([
+    "casementAluminumFrame",
+    "casementFinishing",
+    "doorTypeOptional",
+    "slidingFinishing",
+    "numberOfLocks",
+  ]);
+
+  return Object.entries(config)
+    .filter(
+      ([k, v]) => v !== null && v !== undefined && v !== "" && !skip.has(k),
+    )
+    .map(([k, v]) => {
+      let displayValue = String(v);
+      if (k === "sidePanel")
+        displayValue = sidePanelLabels[displayValue] ?? displayValue;
+      if (k === "internalColor") displayValue = displayValue.toLowerCase();
+      if (k === "addLock" && config.numberOfLocks) displayValue = `yes`;
+      return { label: labelMap[k] ?? k, value: displayValue };
+    })
+    .filter(({ label }) => label !== "numberOfLocks");
+}
+
+// ─── Shopping Cart Page ────────────────────────────────────────────────────────
+
+interface RoomSectionProps {
+  room: CartRoom;
+  onDeleteRoom: (roomId: string) => void;
+  onDeleteProduct: (roomId: string, productId: string) => void;
+}
+
+function ProductCard({
+  product,
+  // roomId,
+  onDelete,
+}: {
+  product: CartProduct;
+  roomId: string;
+  onDelete: () => void;
+}) {
+  const config = (product.config ?? {}) as Record<string, any>;
+  const configEntries = formatConfig(config);
+  const widthMm = config.width ? String(config.width) : null;
+
+  return (
+    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+      {/* Product header row */}
+      <div className="flex items-center gap-3 p-3">
+        <div className="w-[72px] h-[90px] shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
+          <img
+            alt={product.name}
+            className="w-full h-full object-cover"
+            src={product.image}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-['Poppins'] font-semibold text-[#1C1B1F] text-base">
+            {product.name}
+          </p>
+          <p className="font-['Poppins'] font-bold text-[#1C1B1F] text-base mt-0.5">
+            ${product.price.toFixed(2)}
+          </p>
+        </div>
+        <button
+          aria-label={`Remove ${product.name}`}
+          className="shrink-0 p-2 text-red-400 hover:text-red-600 transition"
+          onClick={onDelete}
+        >
+          <TrashIcon className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Config details */}
+      {configEntries.length > 0 && (
+        <div className="px-3 pb-3 border-t border-gray-100 pt-2 grid grid-cols-1 gap-0.5">
+          {configEntries.map(({ label, value }) => (
+            <p key={label} className="font-['Poppins'] text-xs text-[#555]">
+              <span className="capitalize">{label}</span>
+              {"  "}
+              {value}
+            </p>
+          ))}
+          {config.numberOfLocks && (
+            <p className="font-['Poppins'] text-xs text-[#555]">
+              Number of Lock{"  "}
+              {String(config.numberOfLocks)}
+            </p>
+          )}
+          {widthMm && (
+            <p className="font-['Poppins'] text-xs text-[#555]">
+              Width{"  "}L{widthMm}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RoomSection({
+  room,
+  onDeleteRoom,
+  onDeleteProduct,
+}: RoomSectionProps) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  // const totalWidth = room.products.reduce((sum, p) => {
+  //   const w = parseInt(
+  //     String((p.config as Record<string, unknown>)?.width ?? "0"),
+  //   );
+  //   return sum + (isNaN(w) ? 0 : w);
+  // }, 0);
+
+  return (
+    <section className="border-b border-gray-200 pb-6">
+      {/* Room header */}
+      <div className="flex items-center justify-between py-3">
+        <h2 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
+          {room.name}
+        </h2>
+        <div className="flex items-center gap-2">
+          <button
+            aria-label={`Delete ${room.name}`}
+            className="p-1.5 text-red-400 hover:text-red-600 transition"
+            onClick={() => onDeleteRoom(room._id)}
+          >
+            <TrashIcon className="w-5 h-5" />
+          </button>
+          <button
+            aria-label={collapsed ? "Expand" : "Collapse"}
+            className="p-1.5 text-[#555] hover:text-[#1C1B1F] transition"
+            onClick={() => setCollapsed((c) => !c)}
+          >
+            <ChevronDown open={!collapsed} />
+          </button>
+        </div>
+      </div>
+
+      {!collapsed && (
+        <div className="space-y-4">
+          {/* Sketch images row */}
+          {room.sketchImages && room.sketchImages.length > 0 && (
+            <div>
+              <p className="font-['Poppins'] text-sm text-[#555] mb-2">
+                Sketch
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {room.sketchImages.map((src, i) => (
+                  <div
+                    key={i}
+                    className="shrink-0 w-[80px] h-[110px] rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
+                  >
+                    <img
+                      alt={`Sketch ${i + 1}`}
+                      className="w-full h-full object-contain"
+                      src={src}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3D Render images row */}
+          {room.renderImages && room.renderImages.length > 0 && (
+            <div>
+              <p className="font-['Poppins'] text-sm text-[#555] mb-2">
+                3D Render
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {room.renderImages.map((src, i) => (
+                  <div
+                    key={i}
+                    className="shrink-0 w-[80px] h-[110px] rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
+                  >
+                    <img
+                      alt={`Render ${i + 1}`}
+                      className="w-full h-full object-contain"
+                      src={src}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Products */}
+          <div>
+            <p className="font-['Poppins'] text-sm text-[#555] mb-2">
+              Products (Drag to rearrange):
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {room.products.map((product) => (
+                <ProductCard
+                  key={product._id}
+                  product={product}
+                  roomId={room._id}
+                  onDelete={() => onDeleteProduct(room._id, product._id)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function OrderHistoryTab() {
+  return (
+    <div className="text-center py-16">
+      <p className="font-['Poppins'] text-base text-[#888]">
+        No past orders yet.
+      </p>
+    </div>
+  );
+}
 
 export function ShoppingCartPage() {
   const {
+    propertyInfo,
     cartItems,
     previousPage,
     setCurrentPage,
@@ -11,41 +317,96 @@ export function ShoppingCartPage() {
     handleDeleteProduct,
   } = useApp();
 
+  const [room, setRoom] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState<"cart" | "history">("cart");
+  const [categories, setCategories] = useState<any | null>(null);
+  const [, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.cart
+      .list(propertyInfo?.projectId ?? "")
+
+      .then((data) => {
+        const project = data.response.results;
+        setCategories(project);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+    api.rooms.listByProject(propertyInfo?.projectId ?? "")
+      .then((data) => {
+        const project = data.response.results;
+        setCategories(project);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
   const total = cartItems.reduce(
     (sum, room) => sum + room.products.reduce((s, p) => s + p.price, 0),
     0,
   );
 
+  // Delete entire room (all products in it)
+  const handleDeleteRoom = useCallback(
+    (roomId: string) => {
+      const room = cartItems.find((r) => r._id === roomId);
+      if (!room) return;
+      room.products.forEach((p) => handleDeleteProduct(roomId, p._id));
+    },
+    [cartItems, handleDeleteProduct],
+  );
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Back bar */}
-      <header className="bg-[#332e28] px-4 md:px-8 lg:px-[76px] py-4 flex items-center gap-4">
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20">
         <button
-          className="flex items-center gap-2 text-white hover:opacity-70 transition"
+          className="flex items-center gap-1.5 text-[#1C1B1F] hover:opacity-70 transition"
           onClick={() => setCurrentPage(previousPage)}
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M15 19l-7-7 7-7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-            />
-          </svg>
-          <span className="font-['Poppins'] text-sm">Back</span>
+          <BackIcon />
         </button>
-        <h1 className="font-['Poppins'] font-semibold text-white text-base">
+        <h1 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
           Shopping Cart
         </h1>
+        <button
+          className="px-4 py-1.5 bg-[#7b7267] hover:bg-[#675f56] transition rounded-lg font-['Poppins'] font-medium text-sm text-white"
+          onClick={() => setCurrentPage("landing")}
+        >
+          Home
+        </button>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 md:px-8 py-10">
-        {cartItems.length === 0 ? (
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 md:px-8 flex gap-8">
+          <button
+            className={`py-3 font-['Poppins'] text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "cart"
+                ? "border-[#1C1B1F] text-[#1C1B1F]"
+                : "border-transparent text-[#888] hover:text-[#555]"
+            }`}
+            onClick={() => setActiveTab("cart")}
+          >
+            Current Cart
+          </button>
+          <button
+            className={`py-3 font-['Poppins'] text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "history"
+                ? "border-[#1C1B1F] text-[#1C1B1F]"
+                : "border-transparent text-[#888] hover:text-[#555]"
+            }`}
+            onClick={() => setActiveTab("history")}
+          >
+            Order History
+          </button>
+        </div>
+      </div>
+
+      {/* Body */}
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 md:px-8 pb-28">
+        {activeTab === "history" ? (
+          <OrderHistoryTab />
+        ) : cartItems.length === 0 ? (
           <div className="text-center py-20">
             <p className="font-['Poppins'] text-lg text-[#666] mb-6">
               Your cart is empty.
@@ -58,205 +419,605 @@ export function ShoppingCartPage() {
             </button>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="divide-y divide-gray-100">
             {cartItems.map((room) => (
-              <section
-                className="border border-gray-200 rounded-xl p-6"
-                key={room.id}
-              >
-                <h2 className="font-['Poppins'] font-semibold text-lg text-[#1C1B1F] mb-4">
-                  {room.name}
-                </h2>
-                <ul className="space-y-4">
-                  {room.products.map((product) => (
-                    <li
-                      className="flex items-center gap-4 border-b border-gray-100 pb-4 last:border-0 last:pb-0"
-                      key={product.id}
-                    >
-                      <img
-                        alt={product.name}
-                        className="w-16 h-16 object-cover rounded-lg shrink-0"
-                        src={product.image}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-['Poppins'] font-medium text-[#1C1B1F] truncate">
-                          {product.name}
-                        </p>
-                        <p className="font-['Poppins'] text-sm text-[#7b7267] mt-0.5">
-                          SGD {product.price.toFixed(2)}
-                        </p>
-                      </div>
-                      <button
-                        aria-label={`Remove ${product.name}`}
-                        className="shrink-0 p-2 text-gray-400 hover:text-red-500 transition"
-                        onClick={() => handleDeleteProduct(room.id, product.id)}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                          />
-                        </svg>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <RoomSection
+                key={room._id}
+                room={room}
+                onDeleteRoom={handleDeleteRoom}
+                onDeleteProduct={handleDeleteProduct}
+              />
             ))}
-
-            {/* Total + CTA */}
-            <div className="bg-[#faf4e6] rounded-xl p-6 flex items-center justify-between">
-              <div>
-                <p className="font-['Poppins'] text-sm text-[#666]">Total</p>
-                <p className="font-['Poppins'] font-bold text-2xl text-[#1C1B1F]">
-                  SGD {total.toFixed(2)}
-                </p>
-                <p className="font-['Poppins'] text-xs text-[#7b7267] mt-0.5">
-                  20% discount applied
-                </p>
-              </div>
-              <button
-                className="bg-[#332e28] hover:bg-[#2a2622] active:scale-95 transition px-8 py-3 rounded-[12px] font-['Poppins'] font-medium text-base text-white"
-                onClick={() => navigateTo("checkout", true)}
-              >
-                Proceed to Checkout
-              </button>
-            </div>
           </div>
         )}
       </main>
+
+      {/* Sticky footer */}
+      {activeTab === "cart" && cartItems.length > 0 && (
+        <footer className="fixed bottom-0 left-0 right-0 bg-[#1C1B1F] px-4 md:px-8 py-4 z-20">
+          <div className="max-w-4xl mx-auto">
+            <button
+              className="w-full font-['Poppins'] font-medium text-base text-white text-center hover:opacity-90 transition"
+              onClick={() => navigateTo("checkout", true)}
+            >
+              Proceed to Payment(${total.toFixed(2)})
+            </button>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
 
-// ─── Checkout ─────────────────────────────────────────────────────────────────
+// ─── Checkout Page ─────────────────────────────────────────────────────────────
+
+interface CheckoutFormState {
+  fullName: string;
+  email: string;
+  phone: string;
+  installationDate: string;
+  siteVisitAcknowledged: boolean;
+  deliverySameAsProperty: boolean;
+  deliveryPostalCode: string;
+  deliveryUnit: string;
+  propertyOwnership: "own" | "rented";
+  homeZipCode: string;
+  homeUnit: string;
+  keyDate: string;
+  deliveryAddressDifferent: boolean;
+  paymentMethod: "card" | "paynow";
+  agreedToTerms: boolean;
+}
+
+function FormInput({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "Type here...",
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block font-['Poppins'] font-medium text-sm text-[#1C1B1F] mb-1.5">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      <input
+        className="w-full bg-[#f5f5f5] rounded-lg px-4 py-3 font-['Poppins'] text-sm text-[#1C1B1F] placeholder:text-[#bbb] outline-none focus:ring-2 focus:ring-[#1C1B1F]/20 transition"
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        type={type}
+        value={value}
+        required={required}
+      />
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-6">
+      <h2 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F] mb-5">
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+}
 
 export function CheckoutPage() {
   const { cartItems, propertyInfo, setCurrentPage, handlePaymentSuccess } =
     useApp();
+
+  const [form, setForm] = useState<CheckoutFormState>({
+    fullName: "",
+    email: "",
+    phone: "",
+    installationDate: "",
+    siteVisitAcknowledged: false,
+    deliverySameAsProperty: false,
+    deliveryPostalCode: "",
+    deliveryUnit: "",
+    propertyOwnership: propertyInfo?.isOwnProperty ? "own" : "rented",
+    homeZipCode: propertyInfo?.zipCode ?? "",
+    homeUnit: propertyInfo?.unit ?? "",
+    keyDate: propertyInfo?.keyDate ?? "",
+    deliveryAddressDifferent: false,
+    paymentMethod: "card",
+    agreedToTerms: false,
+  });
+
+  const set = <K extends keyof CheckoutFormState>(
+    key: K,
+    value: CheckoutFormState[K],
+  ) => setForm((f) => ({ ...f, [key]: value }));
 
   const total = cartItems.reduce(
     (sum, room) => sum + room.products.reduce((s, p) => s + p.price, 0),
     0,
   );
 
+  // Per-room total widths
+  const roomWidths = cartItems.map((room) => {
+    const totalMm = room.products.reduce((sum, p) => {
+      const w = parseInt(
+        String((p.config as Record<string, unknown>)?.width ?? "0"),
+      );
+      return sum + (isNaN(w) ? 0 : w);
+    }, 0);
+    return { name: room.name, totalMm };
+  });
+
+  const isValid =
+    form.fullName && form.email && form.phone && form.agreedToTerms;
+
   return (
-    <div className="min-h-screen bg-white">
-      <header className="bg-[#332e28] px-4 md:px-8 lg:px-[76px] py-4 flex items-center gap-4">
+    <div className="min-h-screen bg-[#faf4e6]">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20">
         <button
-          className="flex items-center gap-2 text-white hover:opacity-70 transition"
+          className="flex items-center gap-1.5 text-[#1C1B1F] hover:opacity-70 transition"
           onClick={() => setCurrentPage("cart")}
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M15 19l-7-7 7-7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-            />
-          </svg>
-          <span className="font-['Poppins'] text-sm">Back to Cart</span>
+          <BackIcon />
         </button>
-        <h1 className="font-['Poppins'] font-semibold text-white text-base">
+        <h1 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
           Checkout
         </h1>
+        <button
+          className="px-4 py-1.5 bg-[#7b7267] hover:bg-[#675f56] transition rounded-lg font-['Poppins'] font-medium text-sm text-white"
+          onClick={() => setCurrentPage("landing")}
+        >
+          Home
+        </button>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 md:px-8 py-10 space-y-6">
-        {/* Property summary */}
-        <section className="bg-[#faf4e6] rounded-xl p-6">
-          <h2 className="font-['Poppins'] font-semibold text-lg text-[#1C1B1F] mb-4">
-            Delivery Property
-          </h2>
-          <dl className="grid grid-cols-2 gap-y-2 font-['Poppins'] text-sm">
-            {[
-              ["Type", propertyInfo.propertyType],
-              ["Postal Code", propertyInfo.zipCode],
-              ["Unit", propertyInfo.unit],
-              ["Key Date", propertyInfo.keyDate],
-            ].map(([label, value]) => (
-              <>
-                <dt className="text-[#999]" key={`dt-${label}`}>
-                  {label}
-                </dt>
-                <dd className="text-[#1C1B1F] font-medium" key={`dd-${label}`}>
-                  {value}
-                </dd>
-              </>
-            ))}
-          </dl>
-        </section>
+      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+          {/* ── LEFT COLUMN ── */}
+          <div className="space-y-5">
+            {/* Customer Information */}
+            <SectionCard title="Customer Information">
+              <div className="space-y-4">
+                <FormInput
+                  label="Full Name"
+                  value={form.fullName}
+                  onChange={(v) => set("fullName", v)}
+                  required
+                  placeholder="Type here..."
+                />
+                <FormInput
+                  label="Email Address"
+                  value={form.email}
+                  onChange={(v) => set("email", v)}
+                  type="email"
+                  required
+                  placeholder="Type here..."
+                />
+                <FormInput
+                  label="Phone Number"
+                  value={form.phone}
+                  onChange={(v) => set("phone", v)}
+                  type="tel"
+                  required
+                  placeholder="Type here..."
+                />
+              </div>
+            </SectionCard>
 
-        {/* Order summary */}
-        <section className="border border-gray-200 rounded-xl p-6">
-          <h2 className="font-['Poppins'] font-semibold text-lg text-[#1C1B1F] mb-4">
-            Order Summary
-          </h2>
-          {cartItems.map((room) => (
-            <div className="mb-4 last:mb-0" key={room.id}>
-              <p className="font-['Poppins'] text-sm text-[#666] mb-2">
-                {room.name}
-              </p>
-              {room.products.map((p) => (
-                <div
-                  className="flex justify-between font-['Poppins'] text-sm text-[#1C1B1F] mb-1"
-                  key={p.id}
-                >
-                  <span>{p.name}</span>
-                  <span>SGD {p.price.toFixed(2)}</span>
+            {/* Installation Details */}
+            <SectionCard title="Installation Details">
+              <div className="space-y-4">
+                <div>
+                  <label className="block font-['Poppins'] font-medium text-sm text-[#1C1B1F] mb-1.5">
+                    Installation and Delivery Date
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]">
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                        />
+                      </svg>
+                    </span>
+                    <input
+                      className="w-full bg-[#f5f5f5] rounded-lg pl-10 pr-4 py-3 font-['Poppins'] text-sm text-[#1C1B1F] placeholder:text-[#bbb] outline-none focus:ring-2 focus:ring-[#1C1B1F]/20 transition"
+                      onChange={(e) => set("installationDate", e.target.value)}
+                      placeholder="Pick a date"
+                      type="date"
+                      value={form.installationDate}
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-          ))}
-          <div className="border-t border-gray-200 mt-4 pt-4 flex justify-between font-['Poppins'] font-bold text-base text-[#1C1B1F]">
-            <span>Total</span>
-            <span>SGD {total.toFixed(2)}</span>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    checked={form.siteVisitAcknowledged}
+                    className="mt-0.5 w-4 h-4 rounded border-gray-300 accent-[#1C1B1F]"
+                    onChange={(e) =>
+                      set("siteVisitAcknowledged", e.target.checked)
+                    }
+                    type="checkbox"
+                  />
+                  <span className="font-['Poppins'] text-sm text-[#1C1B1F]">
+                    I understand that a site visit will be conducted three days
+                    after confirmation
+                  </span>
+                </label>
+              </div>
+            </SectionCard>
+
+            {/* Delivery Address */}
+            <SectionCard title="Delivery Address">
+              <div className="space-y-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    checked={form.deliverySameAsProperty}
+                    className="w-4 h-4 rounded border-gray-300 accent-[#1C1B1F]"
+                    onChange={(e) =>
+                      set("deliverySameAsProperty", e.target.checked)
+                    }
+                    type="checkbox"
+                  />
+                  <span className="font-['Poppins'] text-sm text-[#1C1B1F]">
+                    Same as Property Address
+                  </span>
+                </label>
+
+                {!form.deliverySameAsProperty && (
+                  <>
+                    <FormInput
+                      label="Postal Code"
+                      value={form.deliveryPostalCode}
+                      onChange={(v) => set("deliveryPostalCode", v)}
+                      placeholder="Type here..."
+                    />
+                    <FormInput
+                      label="Unit (Optional)"
+                      value={form.deliveryUnit}
+                      onChange={(v) => set("deliveryUnit", v)}
+                      placeholder="Type here..."
+                    />
+                  </>
+                )}
+              </div>
+            </SectionCard>
+
+            {/* Property Info */}
+            <SectionCard title="Property Information">
+              <div className="space-y-4">
+                {/* Ownership toggle */}
+                <div>
+                  <label className="block font-['Poppins'] font-medium text-sm text-[#1C1B1F] mb-2">
+                    Ownership
+                  </label>
+                  <div className="flex gap-2">
+                    {(["own", "rented"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        className={`px-5 py-2 rounded-full font-['Poppins'] font-medium text-sm transition ${
+                          form.propertyOwnership === opt
+                            ? "bg-[#1C1B1F] text-white"
+                            : "bg-[#f0f0f0] text-[#555] hover:bg-[#e0e0e0]"
+                        }`}
+                        onClick={() => set("propertyOwnership", opt)}
+                        type="button"
+                      >
+                        {opt === "own" ? "Own Property" : "Rented Property"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <FormInput
+                  label="Home Zip Code"
+                  value={form.homeZipCode}
+                  onChange={(v) => set("homeZipCode", v)}
+                  placeholder="e.g. 45 Ubi Rd 1, Singapore 408696"
+                />
+                <FormInput
+                  label="Home Unit"
+                  value={form.homeUnit}
+                  onChange={(v) => set("homeUnit", v)}
+                  placeholder="e.g. 3456"
+                />
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    checked={form.deliveryAddressDifferent}
+                    className="w-4 h-4 rounded border-gray-300 accent-[#1C1B1F]"
+                    onChange={(e) =>
+                      set("deliveryAddressDifferent", e.target.checked)
+                    }
+                    type="checkbox"
+                  />
+                  <span className="font-['Poppins'] text-sm text-[#1C1B1F]">
+                    The delivery address is different home address
+                  </span>
+                </label>
+
+                <div>
+                  <label className="block font-['Poppins'] font-medium text-sm text-[#1C1B1F] mb-1.5">
+                    Key Collection Date{" "}
+                    <span className="font-normal text-[#888]">(Optional)</span>
+                  </label>
+                  <input
+                    className="w-full bg-[#f5f5f5] rounded-lg px-4 py-3 font-['Poppins'] text-sm text-[#1C1B1F] placeholder:text-[#bbb] outline-none focus:ring-2 focus:ring-[#1C1B1F]/20 transition"
+                    onChange={(e) => set("keyDate", e.target.value)}
+                    placeholder={new Date().toLocaleDateString("en-SG")}
+                    type="date"
+                    value={form.keyDate}
+                  />
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* Payment Method */}
+            <SectionCard title="Payment Method">
+              <p className="font-['Poppins'] text-xs text-[#888] mb-4">
+                Secure payment powered by HitPay
+              </p>
+              <div className="space-y-3">
+                {/* Credit / Debit Card */}
+                <label
+                  className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition ${
+                    form.paymentMethod === "card"
+                      ? "border-[#1C1B1F] bg-white"
+                      : "border-gray-200 bg-white hover:border-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      form.paymentMethod === "card"
+                        ? "border-[#1C1B1F]"
+                        : "border-gray-300"
+                    }`}
+                  >
+                    {form.paymentMethod === "card" && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#1C1B1F]" />
+                    )}
+                  </div>
+                  <svg
+                    className="w-6 h-6 text-[#555] shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
+                      Credit / Debit Card
+                    </p>
+                    <p className="font-['Poppins'] text-xs text-[#888]">
+                      Visa, Mastercard, Amex
+                    </p>
+                  </div>
+                  <input
+                    checked={form.paymentMethod === "card"}
+                    className="sr-only"
+                    onChange={() => set("paymentMethod", "card")}
+                    type="radio"
+                  />
+                </label>
+
+                {/* PayNow QR */}
+                <label
+                  className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition ${
+                    form.paymentMethod === "paynow"
+                      ? "border-[#1C1B1F] bg-white"
+                      : "border-gray-200 bg-white hover:border-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      form.paymentMethod === "paynow"
+                        ? "border-[#1C1B1F]"
+                        : "border-gray-300"
+                    }`}
+                  >
+                    {form.paymentMethod === "paynow" && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#1C1B1F]" />
+                    )}
+                  </div>
+                  <svg
+                    className="w-6 h-6 text-[#555] shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
+                      PayNow QR
+                    </p>
+                    <p className="font-['Poppins'] text-xs text-[#888]">
+                      Scan QR code with your banking app
+                    </p>
+                  </div>
+                  <input
+                    checked={form.paymentMethod === "paynow"}
+                    className="sr-only"
+                    onChange={() => set("paymentMethod", "paynow")}
+                    type="radio"
+                  />
+                </label>
+
+                {/* HitPay badge */}
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                    <svg
+                      className="w-3 h-3 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M5 13l4 4L19 7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                      />
+                    </svg>
+                  </div>
+                  <p className="font-['Poppins'] text-sm text-[#555]">
+                    Secured by{" "}
+                    <span className="font-semibold text-[#1C1B1F]">HitPay</span>
+                  </p>
+                </div>
+              </div>
+            </SectionCard>
           </div>
-        </section>
 
-        {/* Legal links */}
-        <p className="font-['Poppins'] text-xs text-[#999] text-center">
-          By confirming, you agree to our{" "}
-          <button
-            className="underline hover:text-[#7b7267]"
-            onClick={() => setCurrentPage("terms")}
-          >
-            Terms & Conditions
-          </button>{" "}
-          and{" "}
-          <button
-            className="underline hover:text-[#7b7267]"
-            onClick={() => setCurrentPage("privacy")}
-          >
-            Privacy Policy
-          </button>
-          .
-        </p>
+          {/* ── RIGHT COLUMN — Order Summary (sticky) ── */}
+          <div className="lg:sticky lg:top-24">
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h2 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
+                  Order Summary
+                </h2>
+              </div>
 
-        <button
-          className="w-full bg-[#332e28] hover:bg-[#2a2622] active:scale-95 transition py-4 rounded-[12px] font-['Poppins'] font-medium text-base text-white"
-          onClick={handlePaymentSuccess}
-        >
-          Confirm &amp; Pay — SGD {total.toFixed(2)}
-        </button>
-      </main>
+              <div className="p-6 space-y-5">
+                {/* Room by room */}
+                {cartItems.map((room, ri) => {
+                  const widthMm = roomWidths[ri]?.totalMm;
+                  return (
+                    <div key={room._id}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
+                          {room.name}
+                        </p>
+                        {widthMm > 0 && (
+                          <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
+                            Total Width: {widthMm}mm
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {room.products.map((p) => (
+                          <div key={p._id} className="flex items-center gap-3">
+                            <div className="w-12 h-14 shrink-0 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+                              <img
+                                alt={p.name}
+                                className="w-full h-full object-contain"
+                                src={p.image}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-['Poppins'] text-sm text-[#1C1B1F] font-medium">
+                                {p.name}
+                              </p>
+                              <p className="font-['Poppins'] text-sm text-[#1C1B1F]">
+                                ${p.price.toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 pt-4 space-y-2">
+                  <div className="flex justify-between font-['Poppins'] text-sm text-[#555]">
+                    <span>Subtotal</span>
+                    <span className="font-medium text-[#1C1B1F]">
+                      ${total.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
+                    <span>Total payment:</span>
+                    <span>${total.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Terms checkbox */}
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    checked={form.agreedToTerms}
+                    className="mt-0.5 w-4 h-4 rounded border-gray-300 accent-[#1C1B1F]"
+                    onChange={(e) => set("agreedToTerms", e.target.checked)}
+                    type="checkbox"
+                  />
+                  <span className="font-['Poppins'] text-xs text-[#555]">
+                    I agree to the{" "}
+                    <button
+                      className="underline text-[#1C1B1F] hover:opacity-70"
+                      onClick={() => setCurrentPage("terms")}
+                      type="button"
+                    >
+                      Terms & Conditions,
+                    </button>{" "}
+                    <button
+                      className="underline text-[#1C1B1F] hover:opacity-70"
+                      onClick={() => setCurrentPage("privacy")}
+                      type="button"
+                    >
+                      Privacy Policy
+                    </button>
+                  </span>
+                </label>
+
+                {/* Pay button */}
+                <button
+                  className={`w-full py-4 rounded-xl font-['Poppins'] font-medium text-base text-white transition ${
+                    isValid
+                      ? "bg-[#1C1B1F] hover:bg-[#333] active:scale-[0.98]"
+                      : "bg-[#999] cursor-not-allowed"
+                  }`}
+                  disabled={!isValid}
+                  onClick={isValid ? handlePaymentSuccess : undefined}
+                >
+                  Pay ${total.toFixed(2)} SGD
+                </button>
+
+                <p className="text-center font-['Poppins'] text-xs text-[#888]">
+                  Your payment information is encrypted and secure
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Profile ─────────────────────────────────────────────────────────────────
+// ─── Profile Page ─────────────────────────────────────────────────────────────
 
 export function ProfilePage() {
   const { userEmail, setCurrentPage, previousPage, handleLogout } = useApp();
@@ -268,19 +1029,7 @@ export function ProfilePage() {
           className="flex items-center gap-2 text-white hover:opacity-70 transition"
           onClick={() => setCurrentPage(previousPage)}
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M15 19l-7-7 7-7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-            />
-          </svg>
+          <BackIcon />
           <span className="font-['Poppins'] text-sm">Back</span>
         </button>
         <h1 className="font-['Poppins'] font-semibold text-white text-base">

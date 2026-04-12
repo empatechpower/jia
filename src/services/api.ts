@@ -199,7 +199,7 @@ async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
-  token?: string | null
+  token?: string | null,
 ): Promise<T> {
   const isFormData = body instanceof FormData;
 
@@ -238,7 +238,7 @@ async function request<T>(
 // Helper for Bubble's Data API (GET list/single)
 async function dataGet<T>(
   path: string,
-  params?: Record<string, string>
+  params?: Record<string, string>,
 ): Promise<T> {
   const url = new URL(`${BASE}/wf${path}`);
   if (params)
@@ -352,22 +352,22 @@ export const api = {
         : undefined;
       return dataGet<{ response: BubbleList<Series> }>(
         "/series",
-        constraints ? { constraints } : undefined
+        constraints ? { constraints } : undefined,
       );
     },
     get_category: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_carpentry_category"
+        "/get_carpentry_category",
       );
     },
     get_type: (category: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_carpentry_type?category=${category}`
+        `/get_carpentry_type?category=${category}`,
       );
     },
     get_a_type: (category: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_type_by_id?id=${category}`
+        `/get_type_by_id?id=${category}`,
       );
     },
   },
@@ -407,7 +407,7 @@ export const api = {
       dataGet<{ response: any }>(`/get_user_rooms?area=${area}`),
     listByProject: (project: string) =>
       dataGet<{ response: any }>(
-        `/get_user_rooms_by_project?project=${project}`
+        `/get_user_rooms_by_project?project=${project}`,
       ),
     /** PATCH /wf/rename-room */
     rename: (roomId: string, name: string) =>
@@ -427,19 +427,37 @@ export const api = {
   cart: {
     /** POST /wf/add-to-cart */
     add: (payload: {
-      room_id: string;
-      room_name: string;
-      product_id: string;
-      product_name: string;
-      product_image: string;
-      base_price: number;
-      final_price: number;
+      aluminium_frame_color: string | null;
+      blum_runner_upgrade: string | null;
+      cost: number;
+      // door?: string;
+      door_type: string;
+      drawer_lock: string;
+      external_color: string;
+      handle_color: string;
+      handle_design: string;
+      internal_color: string;
+      item: string;
+      led_light: string;
+      numlock: number | string | null;
+      project_cart: string;
+      remarks: string;
+      room: string;
+      side_panel: string;
+      selected_aluminium_door_type: string;
+      // product_name: string;
+      // product_image: string;
+      // base_price: number;
+      // final_price: number;
       discount_rate: number;
-      config: ProductConfiguration;
-    }) => request<{ cart_item_id: string }>("POST", "/add-to-cart", payload),
+      // config: ProductConfiguration;
+    }) => request<{ cart_item_id: string }>("POST", "/add_to_cart", payload),
 
     /** GET /obj/cart_item?constraints=[...] */
-    list: () => dataGet<{ response: BubbleList<CartItem> }>("/cart_item"),
+    list: (project: string) =>
+      dataGet<{ response: BubbleList<CartItem> }>(
+        `/get_cart_items?project=${project}`,
+      ),
 
     /** DELETE via POST /wf/remove-from-cart */
     remove: (cartItemId: string) =>
@@ -468,22 +486,22 @@ export const api = {
   portfolio: {
     list: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_portfolio"
+        "/get_portfolio",
       );
     },
     laminate_color: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_carpentry_external_colors"
+        "/get_carpentry_external_colors",
       );
     },
     sample_products: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_sample_products"
+        "/get_sample_products",
       );
     },
     single: (id: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_a_portfolio?id=${id}`
+        `/get_a_portfolio?id=${id}`,
       );
     },
   },

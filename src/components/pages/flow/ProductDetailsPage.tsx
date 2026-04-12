@@ -144,6 +144,7 @@ export default function ProductDetailsPage() {
     cartItemCount,
     handleAddProductToCart,
     setShowSuccessMessage,
+    propertyInfo,
   } = useApp();
 
   const isKitchenProduct =
@@ -271,6 +272,26 @@ export default function ProductDetailsPage() {
   const [lengthData, setLengthData] = useState<any>(null);
 
   function handleConfirmAdd() {
+    api.cart.add({
+      aluminium_frame_color: cfg.aluminiumFrameColor ?? "",
+      blum_runner_upgrade: cfg.blumRunnerUpgrade ?? "",
+      cost: prices?.original,
+      door_type: cfg.doorOption ?? "",
+      drawer_lock: cfg.addLock ?? "",
+      external_color: cfg.externalColor ?? "",
+      handle_color: cfg.handleColor ?? "",
+      handle_design: cfg.handleDesign ?? "",
+      internal_color: cfg.internalColor ?? "",
+      item: cfg.width_id ?? "",
+      led_light: cfg.ledStrip ?? "",
+      numlock: cfg.numberOfLocks ?? "",
+      project_cart: propertyInfo.projectId ?? "",
+      remarks: cfg.remarks,
+      room: selectedRoomId ?? "",
+      side_panel: cfg.sidePanel ?? "",
+      selected_aluminium_door_type: cfg.aluminiumDoorFinishing ?? "",
+      discount_rate: 0,
+    });
     const productImage = PRODUCT_GALLERY_IMAGES[0];
     handleAddProductToCart(
       selectedProductName,
@@ -454,6 +475,7 @@ export default function ProductDetailsPage() {
 
     return { original, discounted };
   }
+  console.log("Config and lengthData", cfg);
   const prices = useMemo(() => {
     if (!lengthData || !type) {
       return { original: 0, discounted: 0 };
@@ -717,6 +739,9 @@ export default function ProductDetailsPage() {
                             setCfg((p) => ({
                               ...p,
                               width: w,
+                              width_id: products?.find(
+                                (item: any) => item.length === `L${w}`,
+                              )?._id,
                               doorOption: null,
                               kitchenCasementDoorOpening: null,
                             }))

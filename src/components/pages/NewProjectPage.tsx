@@ -136,7 +136,7 @@ export default function NewProjectPage() {
   function mapToProjectPayload(
     formData: any,
     floorplanFile?: File,
-    floorplanUrl?: string
+    floorplanUrl?: string,
   ) {
     const fd = new FormData();
 
@@ -181,14 +181,11 @@ export default function NewProjectPage() {
         // =========================
         // ✅ CREATE
         // =========================
-        console.log(
-          "No existing project found, creating new one with payload:",
-          formData
-        );
+
         const formDataPayload = mapToProjectPayload(
           formData,
           floorplanFile ?? undefined,
-          floorplanUrl
+          floorplanUrl,
         );
 
         const createRes = await api.projects.create(formDataPayload);
@@ -204,7 +201,7 @@ export default function NewProjectPage() {
         const formDataPayload = mapToProjectPayload(
           formData,
           floorplanFile ?? undefined,
-          floorplanUrl
+          floorplanUrl,
         );
         Object.entries(payload).forEach(([key, value]) => {
           if (value) formDataPayload.append(key, value as any);
@@ -212,8 +209,6 @@ export default function NewProjectPage() {
 
         formDataPayload.append("project_id", projectId);
         await api.projects.update(projectId, formDataPayload);
-
-        console.log("Updated project:", projectId);
       }
 
       // =========================
@@ -246,10 +241,18 @@ export default function NewProjectPage() {
       setFloorplanUrl("");
     }
   }
-  const formatDate = (timestamp: number | string) => {
-    if (!timestamp) return "";
-    const date = new Date(Number(timestamp));
-    return date.toISOString().split("T")[0];
+  const formatDate = (value: number | string) => {
+    if (!value) return "";
+
+    const date = new Date(value);
+
+    if (isNaN(date.getTime())) return "";
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
   };
   return (
     <div className="min-h-screen bg-white">
@@ -432,8 +435,8 @@ export default function NewProjectPage() {
                 {floorplanFile
                   ? floorplanFile.name
                   : floorplanUrl
-                  ? "Existing file uploaded"
-                  : "Choose a file…"}
+                    ? "Existing file uploaded"
+                    : "Choose a file…"}
               </span>
               {floorplanUrl && !floorplanFile && (
                 <a

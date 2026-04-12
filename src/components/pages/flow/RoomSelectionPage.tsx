@@ -5,7 +5,7 @@ import { api } from "@/services/api";
 
 export default function RoomSelectionPage() {
   const {
-    rooms,
+    // rooms,
     propertyInfo,
     cartItemCount,
     setCurrentPage,
@@ -51,14 +51,14 @@ export default function RoomSelectionPage() {
               api.rooms.create({
                 project: propertyInfo.projectId ?? "",
                 area: selectedArea, // auto naming
-              })
+              }),
           );
 
           await Promise.all(createPromises);
 
           // ✅ Refetch updated rooms
           const updated = await api.rooms.listByProject(
-            propertyInfo.projectId ?? ""
+            propertyInfo.projectId ?? "",
           );
 
           if (!isMounted) return;
@@ -78,8 +78,7 @@ export default function RoomSelectionPage() {
       isMounted = false;
     };
   }, [propertyInfo?.projectId, numberOfRooms]);
-  console.log("propertyInfo?.projectId", propertyInfo?.projectId);
-  console.log("numberOfRooms", numberOfRooms);
+
   return (
     <div className="min-h-screen bg-white">
       <header className="bg-white border-b border-gray-100 px-5 py-3.5 flex items-center justify-between relative">
@@ -145,9 +144,9 @@ export default function RoomSelectionPage() {
 
         <ul className="space-y-3">
           {room?.map((room: any) => {
-            const cartRoom = cartItems.find((r) => r.id === room.id);
+            const cartRoom = cartItems.find((r) => r._id === room._id);
             return (
-              <li key={room.id}>
+              <li key={room._id}>
                 <button
                   className="w-full flex items-center gap-4 p-4 border-2 border-gray-200 rounded-xl hover:border-[#332e28] transition text-left group"
                   onClick={() => handleSelectRoom(room._id, room.name)}
