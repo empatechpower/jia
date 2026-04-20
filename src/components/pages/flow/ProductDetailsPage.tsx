@@ -146,6 +146,7 @@ export default function ProductDetailsPage() {
     setShowSuccessMessage,
     propertyInfo,
   } = useApp();
+  const { isLoggedIn } = useApp();
 
   const isKitchenProduct =
     selectedArea === "kitchen" && !!kitchenProductPricing[typeId];
@@ -1131,7 +1132,14 @@ export default function ProductDetailsPage() {
                   : "bg-gray-300 cursor-not-allowed"
               }`}
               disabled={!isFormValid}
-              onClick={() => setShowCartModal(true)}
+              onClick={() => {
+                if (isLoggedIn) {
+                  setShowCartModal(true);
+                } else {
+                  setCurrentPage("login");
+                }
+              }}
+              // onClick={() => setShowCartModal(true)}
             >
               Add to cart
             </button>

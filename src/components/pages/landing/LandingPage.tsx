@@ -24,7 +24,7 @@ export default function LandingPage() {
     if (isLoggedIn) {
       setCurrentPage("newProject");
     } else {
-      setCurrentPage("login");
+      setCurrentPage("seriesSelection");
     }
   }
 
