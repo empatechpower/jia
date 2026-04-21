@@ -1,5 +1,7 @@
 // ─── Page Navigation ────────────────────────────────────────────────────────
 
+import { CartProduct } from "@/components/pages/TransactionalPages";
+
 export type Page =
   | "landing"
   | "login"
@@ -24,14 +26,6 @@ export type Page =
 export interface Room {
   _id: string;
   name: string;
-}
-
-export interface CartProduct {
-  _id: string;
-  name: string;
-  price: number;
-  image: string;
-  config?: ProductConfig;
 }
 
 export interface CartRoom {

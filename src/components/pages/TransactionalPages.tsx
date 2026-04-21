@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
-import type { CartRoom, CartProduct } from "@/types";
+import type { CartRoom, ProductConfig } from "@/types";
 import { api } from "@/services/api";
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
@@ -61,23 +61,23 @@ function ChevronDown({ open }: { open: boolean }) {
 
 /** Format a product config object into readable key-value pairs */
 function formatConfig(
-  config: Record<string, unknown>,
+  config: Record<string, unknown>
 ): Array<{ label: string; value: string }> {
   const labelMap: Record<string, string> = {
-    internalColor: "Internal color",
-    externalColor: "External color",
+    internal_color: "Internal color",
+    laminate_color: "External color",
     width: "Width",
-    doorOption: "Door Type",
+    door_type: "Door Type",
     casementDoorOpening: "Door Opens",
-    ledStrip: "LED Light",
-    sidePanel: "Side Panel",
-    addLock: "Drawer Lock",
-    numberOfLocks: "Number of Lock",
-    handleDesign: "Handle Design",
-    handleColor: "Handle Color",
-    aluminiumFrameColor: "Aluminium Frame",
-    aluminiumDoorFinishing: "Door Finishing",
-    blumRunnerUpgrade: "Blum Runner",
+    led_light_text: "LED Light",
+    side_panel_text: "Side Panel",
+    drawer_lock_text: "Drawer Lock",
+    numlock: "Number of Lock",
+    handle_design: "Handle Design",
+    handle_color: "Handle Color",
+    aluminium_frame_color: "Aluminium Frame Color",
+    door_finishing: "Door Finishing",
+    blum_runner_upgrade_text: "Blum Runner",
     kitchenCasementDoorOpening: "Door Opens",
     remarks: "Remarks",
   };
@@ -95,21 +95,36 @@ function formatConfig(
     "doorTypeOptional",
     "slidingFinishing",
     "numberOfLocks",
+    "Created Date",
+    "item",
+    "type",
+    "_id",
+    "Created By",
+    "user",
+    "status",
+    "blum_runner_upgrade",
+    "pricing",
+    "room",
+    "project cart",
+    "Modified Date",
+    "handle_design_text",
+    "external_color",
+    "selected_aluminium_doorType",
   ]);
 
   return Object.entries(config)
     .filter(
-      ([k, v]) => v !== null && v !== undefined && v !== "" && !skip.has(k),
+      ([k, v]) => v !== null && v !== undefined && v !== "" && !skip.has(k)
     )
     .map(([k, v]) => {
       let displayValue = String(v);
-      if (k === "sidePanel")
+      if (k === "side_panel_text")
         displayValue = sidePanelLabels[displayValue] ?? displayValue;
       if (k === "internalColor") displayValue = displayValue.toLowerCase();
-      if (k === "addLock" && config.numberOfLocks) displayValue = `yes`;
+      if (k === "drawer_lock_text" && config.numlock) displayValue = `Yes`;
       return { label: labelMap[k] ?? k, value: displayValue };
     })
-    .filter(({ label }) => label !== "numberOfLocks");
+    .filter(({ label }) => label !== "numlock");
 }
 
 // ─── Shopping Cart Page ────────────────────────────────────────────────────────
@@ -119,19 +134,30 @@ interface RoomSectionProps {
   onDeleteRoom: (roomId: string) => void;
   onDeleteProduct: (roomId: string, productId: string) => void;
 }
-
+export interface CartProduct {
+  _id: string;
+  name: string;
+  price: number;
+  image: string;
+  config?: ProductConfig;
+  cost?: number;
+  code?: string;
+  pricing?: string;
+}
 function ProductCard({
   product,
   // roomId,
   onDelete,
+  sketch,
 }: {
   product: CartProduct;
   roomId: string;
+  sketch: string;
   onDelete: () => void;
 }) {
-  const config = (product.config ?? {}) as Record<string, any>;
+  const config = (product ?? {}) as Record<string, any>;
   const configEntries = formatConfig(config);
-  const widthMm = config.width ? String(config.width) : null;
+  const widthMm = product?.pricing?.length ?? null;
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
@@ -140,16 +166,16 @@ function ProductCard({
         <div className="w-[72px] h-[90px] shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
           <img
             alt={product?.name}
-            className="w-full h-full object-cover"
-            src={product?.image}
+            className="w-full h-full object-contain"
+            src={sketch}
           />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-['Poppins'] font-semibold text-[#1C1B1F] text-base">
-            {product?.name}
+            Type {product?.code}
           </p>
           <p className="font-['Poppins'] font-bold text-[#1C1B1F] text-base mt-0.5">
-            ${product?.price?.toFixed(2)}
+            ${product?.cost?.toFixed(2)}
           </p>
         </div>
         <button
@@ -162,7 +188,7 @@ function ProductCard({
       </div>
 
       {/* Config details */}
-      {configEntries.length > 0 && (
+      {/* {configEntries.length > 0 && (
         <div className="px-3 pb-3 border-t border-gray-100 pt-2 grid grid-cols-1 gap-0.5">
           {configEntries.map(({ label, value }) => (
             <p key={label} className="font-['Poppins'] text-xs text-[#555]">
@@ -180,6 +206,24 @@ function ProductCard({
           {widthMm && (
             <p className="font-['Poppins'] text-xs text-[#555]">
               Width{"  "}L{widthMm}
+            </p>
+          )}
+        </div>
+      )} */}
+
+      {configEntries.length > 0 && (
+        <div className="px-3 pb-3 border-t border-gray-100 pt-2 grid grid-cols-1 gap-0.5">
+          {configEntries.map(({ label, value }) => (
+            <p key={label} className="font-['Poppins'] text-xs text-[#555]">
+              <span className="capitalize">{label}</span>:{"  "}
+              {value}
+            </p>
+          ))}
+
+          {widthMm && (
+            <p className="font-['Poppins'] text-xs text-[#555]">
+              Width : {"  "}
+              {widthMm}
             </p>
           )}
         </div>
@@ -286,6 +330,7 @@ function RoomSection({
                   key={product._id}
                   product={product}
                   roomId={room?._id}
+                  sketch={room?.sketchImages[0]}
                   onDelete={() => onDeleteProduct(room?._id, product?._id)}
                 />
               ))}
@@ -309,7 +354,6 @@ function OrderHistoryTab() {
 
 export function ShoppingCartPage() {
   const {
-    propertyInfo,
     cartItems,
     previousPage,
     setCurrentPage,
@@ -323,8 +367,6 @@ export function ShoppingCartPage() {
   const [cartItem, setCartItem] = useState<any | null>(null);
   const [cartRoom, setCartRoom] = useState<any | null>(null);
   const [, setLoading] = useState(true);
-  const [works, setWorks] = useState<any>();
-  const [products, setProducts] = useState<any[]>();
   const [aluminium, setAluminium] = useState<any[]>();
   const [type, setType] = useState<any[] | null>([]);
   const [product, setProduct] = useState<any[] | null>([]);
@@ -355,7 +397,6 @@ export function ShoppingCartPage() {
 
     Promise.all([
       api.portfolio.laminate_color(),
-
       api.products.get_handle_design(),
       api.products.get_aluminium_finishing(),
       api.series.list(),
@@ -375,14 +416,14 @@ export function ShoppingCartPage() {
           setHandleDesign(handleDesignData);
           setAluminium(handleAluminiumDesignData);
           setType(handleTypeData);
-        },
+        }
       )
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
-  const total = cartItems.reduce(
-    (sum, room) => sum + room.products.reduce((s, p) => s + p.price, 0),
-    0,
+  const total = (cartItem ?? []).reduce(
+    (sum: number, item: any) => sum + (Number(item.cost) || 0),
+    0
   );
 
   // Delete entire room (all products in it)
@@ -392,25 +433,77 @@ export function ShoppingCartPage() {
       if (!room) return;
       room.products.forEach((p) => handleDeleteProduct(roomId, p._id));
     },
-    [cartItems, handleDeleteProduct],
+    [cartItems, handleDeleteProduct]
   );
 
   console.log("cart  items", cartItem);
-  const typeMap = Object.fromEntries((type ?? []).map((t: any) => [t._id, t]));
+  // ✅ width groups (match your backend format)
+  const isSmallWidth = ["L400mm", "L450mm", "L500mm"];
+  // const isLargeWidth = ["L800mm", "L900mm", "L1000mm"];
 
+  // ✅ build lookup maps
+  const typeMap = Object.fromEntries((type ?? []).map((t: any) => [t._id, t]));
+  const handleMap = Object.fromEntries(
+    (handleDesign ?? []).map((h: any) => [h._id, h])
+  );
+  const colorMap = Object.fromEntries(
+    (colors ?? []).map((h: any) => [h._id, h])
+  );
+  const doorFinishing = Object.fromEntries(
+    (aluminium ?? []).map((h: any) => [h._id, h])
+  );
   const productMap = Object.fromEntries(
-    (cartItem ?? []).map((p: any) => [p._id, p]),
+    (cartItem ?? []).map((p: any) => [p._id, p])
   );
 
+  const pricingMap = Object.fromEntries(
+    (product ?? []).map((p: any) => [p._id, p])
+  );
+
+  // ✅ helper: sketch image (length only)
+  function getSketchImage(t: any, product: any) {
+    const length = product?.pricing?.length;
+    const isSmall = isSmallWidth.includes(length);
+
+    return isSmall ? t.sketchSmall : t.sketchBig;
+  }
+
+  // ✅ helper: render image (length + color)
+  function getRenderImage(t: any, product: any) {
+    const length = product?.pricing?.length;
+    const color = product?.internal_color;
+
+    const isSmall = isSmallWidth.includes(length);
+
+    if (color === "Light") {
+      return isSmall ? t.photoLightSmall : t.photoLightBig;
+    } else {
+      return isSmall ? t.photoDarkSmall : t.photoDarkBig;
+    }
+  }
+
+  // ✅ main transformation
   const roomsForUI = (cartRoom ?? []).map((room: any) => {
+    // 🔹 attach products + pricing
     const products = (room.items || [])
       .map((id: string) => productMap[id])
-      .filter(Boolean);
+      .filter(Boolean)
+      .map((p: any) => ({
+        ...p,
+        pricing: pricingMap[p.item],
+        code: typeMap[p.type]?.code || null, // ✅ ADD CODE HERE
+        handle_design: handleMap[p.handle_design_text]?.name || null,
+        laminate_color: colorMap[p.external_color]?.colorDisplayName || null,
+        door_finishing:
+          doorFinishing[p.selected_aluminium_doorType]?.name || null,
+      }));
 
+    // 🔹 get types used in this room
     const typesUsed = products.map((p: any) => typeMap[p.type]).filter(Boolean);
 
+    // 🔹 remove duplicate types
     const uniqueTypes = Array.from(
-      new Map(typesUsed.map((t: any) => [t._id, t])).values(),
+      new Map(typesUsed.map((t: any) => [t._id, t])).values()
     );
 
     return {
@@ -418,20 +511,24 @@ export function ShoppingCartPage() {
       name: room.name,
       products,
 
-      sketchImages: uniqueTypes.map((t: any) => t.sketchSmall || t.sketchBig),
+      // ✅ sketch images (1 per type)
+      sketchImages: uniqueTypes
+        .map((t: any) => {
+          const product = products.find((p: any) => p.type === t._id);
+          return getSketchImage(t, product);
+        })
+        .filter(Boolean),
 
-      renderImages: uniqueTypes.flatMap((t: any) =>
-        [
-          t.photoLightSmall,
-          t.photoLightBig,
-          t.photoDarkSmall,
-          t.photoDarkBig,
-        ].filter(Boolean),
-      ),
+      // ✅ render images (1 per type)
+      renderImages: uniqueTypes
+        .map((t: any) => {
+          const product = products.find((p: any) => p.type === t._id);
+          return getRenderImage(t, product);
+        })
+        .filter(Boolean),
     };
   });
-  const isSmallWidth = ["400mm", "450mm", "500mm"];
-  const isLargeWidth = ["800mm", "900mm", "1000mm"];
+
   console.log("rooms for ui", roomsForUI);
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -511,14 +608,14 @@ export function ShoppingCartPage() {
       </main>
 
       {/* Sticky footer */}
-      {activeTab === "cart" && cartItems.length > 0 && (
+      {activeTab === "cart" && cartItem?.length > 0 && (
         <footer className="fixed bottom-0 left-0 right-0 bg-[#1C1B1F] px-4 md:px-8 py-4 z-20">
           <div className="max-w-4xl mx-auto">
             <button
               className="w-full font-['Poppins'] font-medium text-base text-white text-center hover:opacity-90 transition"
               onClick={() => navigateTo("checkout", true)}
             >
-              Proceed to Payment(${total.toFixed(2)})
+              Proceed to Payment(${total?.toFixed(2)})
             </button>
           </div>
         </footer>
@@ -621,19 +718,19 @@ export function CheckoutPage() {
 
   const set = <K extends keyof CheckoutFormState>(
     key: K,
-    value: CheckoutFormState[K],
+    value: CheckoutFormState[K]
   ) => setForm((f) => ({ ...f, [key]: value }));
 
   const total = cartItems.reduce(
     (sum, room) => sum + room.products.reduce((s, p) => s + p.price, 0),
-    0,
+    0
   );
 
   // Per-room total widths
   const roomWidths = cartItems.map((room) => {
     const totalMm = room.products.reduce((sum, p) => {
       const w = parseInt(
-        String((p.config as Record<string, unknown>)?.width ?? "0"),
+        String((p.config as Record<string, unknown>)?.width ?? "0")
       );
       return sum + (isNaN(w) ? 0 : w);
     }, 0);
