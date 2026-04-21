@@ -191,7 +191,11 @@ export interface PortfolioProject {
   size: string;
   featured: string;
 }
+let logoutHandler: (() => void) | null = null;
 
+export const setLogoutHandler = (fn: () => void) => {
+  logoutHandler = fn;
+};
 // ─── HTTP helper ──────────────────────────────────────────────────────────────
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -204,13 +208,10 @@ async function request<T>(
   const isFormData = body instanceof FormData;
 
   const headers: Record<string, string> = {};
-
   const storedToken = token ?? localStorage.getItem("jia_token");
-  if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
 
-  if (!isFormData) {
-    headers["Content-Type"] = "application/json";
-  }
+  if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
+  if (!isFormData) headers["Content-Type"] = "application/json";
 
   const res = await fetch(`${BASE}/wf${path}`, {
     method,
@@ -218,21 +219,32 @@ async function request<T>(
     body: isFormData ? body : body ? JSON.stringify(body) : undefined,
   });
 
-  // ✅ FIXED ERROR HANDLING
-  if (!res.ok) {
-    let errorMessage = "Something went wrong";
+  let data: any = null;
 
-    try {
-      const errorData = await res.json();
-      errorMessage = errorData?.message || errorData?.reason || errorMessage;
-    } catch {
-      errorMessage = await res.text();
-    }
-
-    throw new Error(errorMessage);
+  try {
+    data = await res.json();
+  } catch {
+    console.log("FAILED TO PARSE JSON");
   }
 
-  return res.json();
+  console.log("API RESPONSE:", data); // ✅ MUST log now
+
+  // 🚨 HANDLE TOKEN EXPIRY FIRST
+  if (
+    data?.error_class === "Unauthorized" ||
+    data?.translation?.includes("Invalid or expired token")
+  ) {
+    console.log("🚨 TOKEN EXPIRED DETECTED");
+    logoutHandler?.();
+    throw new Error("Session expired");
+  }
+
+  // Handle HTTP errors AFTER parsing
+  if (!res.ok) {
+    throw new Error(data?.message || data?.reason || "Something went wrong");
+  }
+
+  return data;
 }
 
 // Helper for Bubble's Data API (GET list/single)
@@ -241,16 +253,42 @@ async function dataGet<T>(
   params?: Record<string, string>,
 ): Promise<T> {
   const url = new URL(`${BASE}/wf${path}`);
-  if (params)
+
+  if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  }
 
   const token = localStorage.getItem("jia_token");
+
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(url.toString(), { headers });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<T>;
+
+  let data: any = null;
+
+  try {
+    data = await res.json();
+  } catch {
+    console.log("FAILED TO PARSE JSON");
+  }
+
+  console.log("DATA GET RESPONSE:", data); // ✅ DEBUG
+
+  if (
+    data?.error_class === "Unauthorized" ||
+    data?.translation?.includes("Invalid or expired token")
+  ) {
+    console.log("🚨 TOKEN EXPIRED DETECTED");
+    logoutHandler?.();
+    throw new Error("Session expired");
+  }
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+
+  return data as T;
 }
 
 // ─── API namespaces ───────────────────────────────────────────────────────────
@@ -326,6 +364,8 @@ export const api = {
     },
 
     /** GET /obj/product/:id */
+    get_all_products: () =>
+      dataGet<{ response: any }>(`/get_all_carpentry_prroducts`),
     get_products: (id: string) =>
       dataGet<{ response: any }>(`/get_a_carpentry_prroduct?type=${id}`),
     get_handle_design: () => dataGet<{ response: any }>(`/get_handle_design`),
@@ -344,15 +384,9 @@ export const api = {
   // ── Series ────────────────────────────────────────────────────────────────
 
   series: {
-    list: (area?: "wardrobe" | "kitchen") => {
-      const constraints = area
-        ? JSON.stringify([
-            { key: "area", constraint_type: "equals", value: area },
-          ])
-        : undefined;
+    list: () => {
       return dataGet<{ response: BubbleList<Series> }>(
-        "/series",
-        constraints ? { constraints } : undefined,
+        "/get_all_carpentry_type",
       );
     },
     get_category: () => {
@@ -448,7 +482,7 @@ export const api = {
       // product_name: string;
       // product_image: string;
       // base_price: number;
-      // final_price: number;
+      type: string;
       discount_rate: number;
       // config: ProductConfiguration;
     }) => request<{ cart_item_id: string }>("POST", "/add_to_cart", payload),

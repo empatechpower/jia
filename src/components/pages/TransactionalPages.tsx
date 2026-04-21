@@ -139,21 +139,21 @@ function ProductCard({
       <div className="flex items-center gap-3 p-3">
         <div className="w-[72px] h-[90px] shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
           <img
-            alt={product.name}
+            alt={product?.name}
             className="w-full h-full object-cover"
-            src={product.image}
+            src={product?.image}
           />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-['Poppins'] font-semibold text-[#1C1B1F] text-base">
-            {product.name}
+            {product?.name}
           </p>
           <p className="font-['Poppins'] font-bold text-[#1C1B1F] text-base mt-0.5">
-            ${product.price.toFixed(2)}
+            ${product?.price?.toFixed(2)}
           </p>
         </div>
         <button
-          aria-label={`Remove ${product.name}`}
+          aria-label={`Remove ${product?.name}`}
           className="shrink-0 p-2 text-red-400 hover:text-red-600 transition"
           onClick={onDelete}
         >
@@ -207,13 +207,13 @@ function RoomSection({
       {/* Room header */}
       <div className="flex items-center justify-between py-3">
         <h2 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
-          {room.name}
+          {room?.name}
         </h2>
         <div className="flex items-center gap-2">
           <button
             aria-label={`Delete ${room.name}`}
             className="p-1.5 text-red-400 hover:text-red-600 transition"
-            onClick={() => onDeleteRoom(room._id)}
+            onClick={() => onDeleteRoom(room?._id)}
           >
             <TrashIcon className="w-5 h-5" />
           </button>
@@ -230,13 +230,13 @@ function RoomSection({
       {!collapsed && (
         <div className="space-y-4">
           {/* Sketch images row */}
-          {room.sketchImages && room.sketchImages.length > 0 && (
+          {room?.sketchImages && room?.sketchImages.length > 0 && (
             <div>
               <p className="font-['Poppins'] text-sm text-[#555] mb-2">
                 Sketch
               </p>
               <div className="flex gap-2 overflow-x-auto pb-1">
-                {room.sketchImages.map((src, i) => (
+                {room?.sketchImages.map((src, i) => (
                   <div
                     key={i}
                     className="shrink-0 w-[80px] h-[110px] rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
@@ -253,13 +253,13 @@ function RoomSection({
           )}
 
           {/* 3D Render images row */}
-          {room.renderImages && room.renderImages.length > 0 && (
+          {room?.renderImages && room?.renderImages.length > 0 && (
             <div>
               <p className="font-['Poppins'] text-sm text-[#555] mb-2">
                 3D Render
               </p>
               <div className="flex gap-2 overflow-x-auto pb-1">
-                {room.renderImages.map((src, i) => (
+                {room?.renderImages.map((src, i) => (
                   <div
                     key={i}
                     className="shrink-0 w-[80px] h-[110px] rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
@@ -281,12 +281,12 @@ function RoomSection({
               Products (Drag to rearrange):
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {room.products.map((product) => (
+              {room?.products.map((product) => (
                 <ProductCard
                   key={product._id}
                   product={product}
-                  roomId={room._id}
-                  onDelete={() => onDeleteProduct(room._id, product._id)}
+                  roomId={room?._id}
+                  onDelete={() => onDeleteProduct(room?._id, product?._id)}
                 />
               ))}
             </div>
@@ -315,28 +315,68 @@ export function ShoppingCartPage() {
     setCurrentPage,
     navigateTo,
     handleDeleteProduct,
+    currentProject,
   } = useApp();
 
   // const [room, setRoom] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<"cart" | "history">("cart");
-  const [, setCategories] = useState<any | null>(null);
+  const [cartItem, setCartItem] = useState<any | null>(null);
+  const [cartRoom, setCartRoom] = useState<any | null>(null);
   const [, setLoading] = useState(true);
+  const [works, setWorks] = useState<any>();
+  const [products, setProducts] = useState<any[]>();
+  const [aluminium, setAluminium] = useState<any[]>();
+  const [type, setType] = useState<any[] | null>([]);
+  const [product, setProduct] = useState<any[] | null>([]);
+  const [handleDesign, setHandleDesign] = useState<any>();
+  const [colors, setColors] = useState<any[] | null>([]);
 
   useEffect(() => {
     api.cart
-      .list(propertyInfo?.projectId ?? "")
+      .list(currentProject?._id ?? "")
 
       .then((data) => {
         const project = data.response.results;
-        setCategories(project);
+        setCartItem(project);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-    api.rooms.listByProject(propertyInfo?.projectId ?? "")
+    api.rooms
+      .listByProject(currentProject?._id ?? "")
       .then((data) => {
         const project = data.response.results;
-        setCategories(project);
+        setCartRoom(project);
       })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    setLoading(true);
+
+    Promise.all([
+      api.portfolio.laminate_color(),
+
+      api.products.get_handle_design(),
+      api.products.get_aluminium_finishing(),
+      api.series.list(),
+      api.products.get_all_products(),
+    ])
+      .then(
+        ([colorRes, handleDesignRes, aluminiumDesign, typeRes, productRes]) => {
+          const colorsData = colorRes.response.results;
+
+          const handleDesignData = handleDesignRes.response.results;
+          const handleAluminiumDesignData = aluminiumDesign.response.results;
+          const handleTypeData = typeRes.response.results;
+          const handleProductData = productRes.response.results;
+
+          setColors(colorsData);
+          setProduct(handleProductData);
+          setHandleDesign(handleDesignData);
+          setAluminium(handleAluminiumDesignData);
+          setType(handleTypeData);
+        },
+      )
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -355,6 +395,44 @@ export function ShoppingCartPage() {
     [cartItems, handleDeleteProduct],
   );
 
+  console.log("cart  items", cartItem);
+  const typeMap = Object.fromEntries((type ?? []).map((t: any) => [t._id, t]));
+
+  const productMap = Object.fromEntries(
+    (cartItem ?? []).map((p: any) => [p._id, p]),
+  );
+
+  const roomsForUI = (cartRoom ?? []).map((room: any) => {
+    const products = (room.items || [])
+      .map((id: string) => productMap[id])
+      .filter(Boolean);
+
+    const typesUsed = products.map((p: any) => typeMap[p.type]).filter(Boolean);
+
+    const uniqueTypes = Array.from(
+      new Map(typesUsed.map((t: any) => [t._id, t])).values(),
+    );
+
+    return {
+      _id: room._id,
+      name: room.name,
+      products,
+
+      sketchImages: uniqueTypes.map((t: any) => t.sketchSmall || t.sketchBig),
+
+      renderImages: uniqueTypes.flatMap((t: any) =>
+        [
+          t.photoLightSmall,
+          t.photoLightBig,
+          t.photoDarkSmall,
+          t.photoDarkBig,
+        ].filter(Boolean),
+      ),
+    };
+  });
+  const isSmallWidth = ["400mm", "450mm", "500mm"];
+  const isLargeWidth = ["800mm", "900mm", "1000mm"];
+  console.log("rooms for ui", roomsForUI);
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -406,7 +484,7 @@ export function ShoppingCartPage() {
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 md:px-8 pb-28">
         {activeTab === "history" ? (
           <OrderHistoryTab />
-        ) : cartItems.length === 0 ? (
+        ) : cartItem?.length === 0 ? (
           <div className="text-center py-20">
             <p className="font-['Poppins'] text-lg text-[#666] mb-6">
               Your cart is empty.
@@ -420,7 +498,7 @@ export function ShoppingCartPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {cartItems.map((room) => (
+            {roomsForUI.map((room: any) => (
               <RoomSection
                 key={room._id}
                 room={room}

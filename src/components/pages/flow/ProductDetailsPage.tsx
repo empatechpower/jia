@@ -245,24 +245,18 @@ export default function ProductDetailsPage() {
     door: isLShapeProduct || !!cfg.doorOption,
 
     "side-panel": isLShapeProduct || isTopHungSeries || !!cfg.sidePanel,
-
     "drawer-lock":
-      isLShapeProduct ||
-      isTopHungSeries ||
-      cfg.addLock === "No" ||
-      (!!cfg.numberOfLocks && cfg.addLock === "Yes"),
-
-    "led-strip":
-      isTopHungSeries || cfg.ledStrip === "Yes" || cfg.ledStrip === "No",
-
-    "kitchen-casement":
-      !isKitchenSingleDoor || !!cfg.kitchenCasementDoorOpening,
-
-    "kitchen-blum":
-      isTopHungSeries ||
-      cfg.blumRunnerUpgrade === "Yes" ||
-      cfg.blumRunnerUpgrade === "No",
+      type?.drawer !== true || cfg.addLock !== "Yes" || !!cfg.numberOfLocks,
+    // "drawer-lock":
+    //   isLShapeProduct ||
+    //   isTopHungSeries ||
+    //   cfg.addLock === "No" ||
+    //   (!!cfg.numberOfLocks && cfg.addLock === "Yes"),
+    "led-strip": type?.ledLight !== true || !!cfg.ledStrip,
+    // "led-strip":
+    //   isTopHungSeries || cfg.ledStrip === "Yes" || cfg.ledStrip === "No",
   };
+
   const isFormValid = Object.values(complete).every(Boolean);
 
   const [showCartModal, setShowCartModal] = useState(false);
@@ -285,13 +279,14 @@ export default function ProductDetailsPage() {
       internal_color: cfg.internalColor ?? "",
       item: cfg.width_id ?? "",
       led_light: cfg.ledStrip ?? "",
-      numlock: cfg.numberOfLocks ?? "",
+      numlock: Number(cfg.numberOfLocks) ?? "",
       project_cart: propertyInfo.projectId ?? "",
       remarks: cfg.remarks,
       room: selectedRoomId ?? "",
       side_panel: cfg.sidePanel ?? "",
       selected_aluminium_door_type: cfg.aluminiumDoorFinishing ?? "",
       discount_rate: 0,
+      type: typeId,
     });
     const productImage = PRODUCT_GALLERY_IMAGES[0];
     handleAddProductToCart(
@@ -1139,7 +1134,6 @@ export default function ProductDetailsPage() {
                   setCurrentPage("login");
                 }
               }}
-              // onClick={() => setShowCartModal(true)}
             >
               Add to cart
             </button>

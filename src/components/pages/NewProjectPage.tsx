@@ -121,7 +121,7 @@ export default function NewProjectPage() {
     if (!formData.zipCode.match(/^\d{6}$/))
       e.zipCode = "Please enter a valid 6-digit postal code.";
     if (!formData.unit) e.unit = "Unit number is required.";
-    if (!formData.keyDate) e.keyDate = "Key collection date is required.";
+    // if (!formData.keyDate) e.keyDate = "Key collection date is required.";
 
     const n = parseInt(formData.numRooms, 10);
     if (isNaN(n) || n < 1 || n > 10)

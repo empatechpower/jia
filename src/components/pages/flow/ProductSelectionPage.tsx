@@ -1,7 +1,3 @@
-/**
- * ProductSelectionPage
- * Wire original JSX here; swap prop callbacks for useApp().
- */
 import { useApp } from "@/context/AppContext";
 import { CartIconWithBadge } from "@/assets/icons";
 import { useEffect, useState } from "react";

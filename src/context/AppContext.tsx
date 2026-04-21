@@ -16,9 +16,11 @@ import type {
   ProductConfig,
 } from "@/types";
 import { calculateProductPrice, countCartItems } from "@/utils";
+import { api, setLogoutHandler } from "@/services/api";
 
 // ─── Shape ───────────────────────────────────────────────────────────────────
-
+const TOKEN_KEY = "jia_token";
+const USER_ID_KEY = "jia_user_id";
 interface AppState {
   // Navigation
   currentPage: Page;
@@ -31,6 +33,9 @@ interface AppState {
   userEmail: string;
   handleLogin: (email: string) => void;
   handleLogout: () => void;
+
+  currentProject: any | null;
+  setCurrentProject: (project: any | null) => void;
 
   // Product flow
   selectedArea: string;
@@ -129,9 +134,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const handleLogout = useCallback(() => {
     setIsLoggedIn(false);
     setCurrentPage("landing");
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_ID_KEY);
+    localStorage.removeItem("jia_email");
   }, []);
 
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    api.projects
+      .get_user_project()
+      .then((data) => {
+        const project = data?.response?.results;
+
+        if (project?._id) {
+          setCurrentProject(project); // ✅ store full object
+        }
+      })
+      .catch(console.error);
+  }, [isLoggedIn]);
+
   // Product flow
+  const [currentProject, setCurrentProject] = useState<any | null>(null);
   const [selectedArea, setSelectedArea] = useState("wardrobe");
   const [selectedSeries, setSelectedSeries] = useState("Hanging and Drawers");
   const [selectedSeriesId, setSelectedSeriesId] = useState("");
@@ -159,6 +183,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Cart
   const [cartItems, setCartItems] = useState<CartRoom[]>([]);
   const cartItemCount = countCartItems(cartItems);
+
+  useEffect(() => {
+    setLogoutHandler(handleLogout);
+  }, [handleLogout]);
 
   const handleAddProductToCart = useCallback(
     (
@@ -283,6 +311,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     handleUpdateRoomName,
     handlePaymentSuccess,
     clearCart,
+    currentProject,
+    setCurrentProject,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
