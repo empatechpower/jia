@@ -729,6 +729,14 @@ export function CheckoutPage() {
         setCartItem(project);
       })
       .catch(console.error);
+    api.user
+      .profile()
+
+      .then((data) => {
+        const project = data.response.results;
+        // setCartItem(project);
+      })
+      .catch(console.error);
   }, []);
   const set = <K extends keyof CheckoutFormState>(
     key: K,

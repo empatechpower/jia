@@ -319,6 +319,7 @@ export const api = {
     /** GET /obj/user/:id */
     me: (userId: string) =>
       dataGet<{ response: any }>(`/get_current_user?id=${userId}`),
+    profile: () => dataGet<{ response: any }>(`/get_user`),
 
     /** PATCH /wf/update-profile */
     update: (payload: Partial<any>) =>
