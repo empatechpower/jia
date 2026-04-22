@@ -539,4 +539,11 @@ export const api = {
       );
     },
   },
+  payment: {
+    create_payment: (amount: number, email: string, receipt: string) => {
+      return dataGet<{ response: { result: any } }>(
+        `/make-payment?amount=${amount}&email=${email}&reference=${receipt}`,
+      );
+    },
+  },
 };

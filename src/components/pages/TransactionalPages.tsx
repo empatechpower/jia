@@ -61,7 +61,7 @@ function ChevronDown({ open }: { open: boolean }) {
 
 /** Format a product config object into readable key-value pairs */
 function formatConfig(
-  config: Record<string, unknown>
+  config: Record<string, unknown>,
 ): Array<{ label: string; value: string }> {
   const labelMap: Record<string, string> = {
     internal_color: "Internal color",
@@ -114,7 +114,7 @@ function formatConfig(
 
   return Object.entries(config)
     .filter(
-      ([k, v]) => v !== null && v !== undefined && v !== "" && !skip.has(k)
+      ([k, v]) => v !== null && v !== undefined && v !== "" && !skip.has(k),
     )
     .map(([k, v]) => {
       let displayValue = String(v);
@@ -416,14 +416,14 @@ export function ShoppingCartPage() {
           setHandleDesign(handleDesignData);
           setAluminium(handleAluminiumDesignData);
           setType(handleTypeData);
-        }
+        },
       )
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
   const total = (cartItem ?? []).reduce(
     (sum: number, item: any) => sum + (Number(item.cost) || 0),
-    0
+    0,
   );
 
   // Delete entire room (all products in it)
@@ -433,10 +433,9 @@ export function ShoppingCartPage() {
       if (!room) return;
       room.products.forEach((p) => handleDeleteProduct(roomId, p._id));
     },
-    [cartItems, handleDeleteProduct]
+    [cartItems, handleDeleteProduct],
   );
 
-  console.log("cart  items", cartItem);
   // ✅ width groups (match your backend format)
   const isSmallWidth = ["L400mm", "L450mm", "L500mm"];
   // const isLargeWidth = ["L800mm", "L900mm", "L1000mm"];
@@ -444,20 +443,20 @@ export function ShoppingCartPage() {
   // ✅ build lookup maps
   const typeMap = Object.fromEntries((type ?? []).map((t: any) => [t._id, t]));
   const handleMap = Object.fromEntries(
-    (handleDesign ?? []).map((h: any) => [h._id, h])
+    (handleDesign ?? []).map((h: any) => [h._id, h]),
   );
   const colorMap = Object.fromEntries(
-    (colors ?? []).map((h: any) => [h._id, h])
+    (colors ?? []).map((h: any) => [h._id, h]),
   );
   const doorFinishing = Object.fromEntries(
-    (aluminium ?? []).map((h: any) => [h._id, h])
+    (aluminium ?? []).map((h: any) => [h._id, h]),
   );
   const productMap = Object.fromEntries(
-    (cartItem ?? []).map((p: any) => [p._id, p])
+    (cartItem ?? []).map((p: any) => [p._id, p]),
   );
 
   const pricingMap = Object.fromEntries(
-    (product ?? []).map((p: any) => [p._id, p])
+    (product ?? []).map((p: any) => [p._id, p]),
   );
 
   // ✅ helper: sketch image (length only)
@@ -503,7 +502,7 @@ export function ShoppingCartPage() {
 
     // 🔹 remove duplicate types
     const uniqueTypes = Array.from(
-      new Map(typesUsed.map((t: any) => [t._id, t])).values()
+      new Map(typesUsed.map((t: any) => [t._id, t])).values(),
     );
 
     return {
@@ -529,7 +528,6 @@ export function ShoppingCartPage() {
     };
   });
 
-  console.log("rooms for ui", roomsForUI);
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -695,8 +693,15 @@ function SectionCard({
 }
 
 export function CheckoutPage() {
-  const { cartItems, propertyInfo, setCurrentPage, handlePaymentSuccess } =
-    useApp();
+  const {
+    userEmail,
+    cartItems,
+    propertyInfo,
+    setCurrentPage,
+
+    currentProject,
+  } = useApp();
+  const [cartItem, setCartItem] = useState<any | null>(null);
 
   const [form, setForm] = useState<CheckoutFormState>({
     fullName: "",
@@ -715,22 +720,26 @@ export function CheckoutPage() {
     paymentMethod: "card",
     agreedToTerms: false,
   });
+  useEffect(() => {
+    api.cart
+      .list(currentProject?._id ?? "")
 
+      .then((data) => {
+        const project = data.response.results;
+        setCartItem(project);
+      })
+      .catch(console.error);
+  }, []);
   const set = <K extends keyof CheckoutFormState>(
     key: K,
-    value: CheckoutFormState[K]
+    value: CheckoutFormState[K],
   ) => setForm((f) => ({ ...f, [key]: value }));
-
-  const total = cartItems.reduce(
-    (sum, room) => sum + room.products.reduce((s, p) => s + p.price, 0),
-    0
-  );
 
   // Per-room total widths
   const roomWidths = cartItems.map((room) => {
     const totalMm = room.products.reduce((sum, p) => {
       const w = parseInt(
-        String((p.config as Record<string, unknown>)?.width ?? "0")
+        String((p.config as Record<string, unknown>)?.width ?? "0"),
       );
       return sum + (isNaN(w) ? 0 : w);
     }, 0);
@@ -739,7 +748,31 @@ export function CheckoutPage() {
 
   const isValid =
     form.fullName && form.email && form.phone && form.agreedToTerms;
+  const total = (cartItem ?? []).reduce(
+    (sum: number, item: any) => sum + (Number(item.cost) || 0),
+    0,
+  );
+  const handlePayment = async () => {
+    try {
+      const res = await api.payment.create_payment(
+        total,
+        userEmail,
+        `order_${Date.now()}`,
+      );
 
+      // adjust based on your API response shape
+      const url = res?.response.result;
+
+      if (!url) {
+        throw new Error("No payment URL returned");
+      }
+
+      window.location.href = url;
+    } catch (error) {
+      console.error("Payment error:", error);
+      alert("Failed to start payment");
+    }
+  };
   return (
     <div className="min-h-screen bg-[#faf4e6]">
       {/* Header */}
@@ -1174,8 +1207,8 @@ export function CheckoutPage() {
                       ? "bg-[#1C1B1F] hover:bg-[#333] active:scale-[0.98]"
                       : "bg-[#999] cursor-not-allowed"
                   }`}
-                  disabled={!isValid}
-                  onClick={isValid ? handlePaymentSuccess : undefined}
+                  // disabled={!isValid}
+                  onClick={handlePayment}
                 >
                   Pay ${total.toFixed(2)} SGD
                 </button>
