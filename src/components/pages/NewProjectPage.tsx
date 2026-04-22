@@ -136,7 +136,7 @@ export default function NewProjectPage() {
   function mapToProjectPayload(
     formData: any,
     floorplanFile?: File,
-    floorplanUrl?: string,
+    floorplanUrl?: string
   ) {
     const fd = new FormData();
 
@@ -185,7 +185,7 @@ export default function NewProjectPage() {
         const formDataPayload = mapToProjectPayload(
           formData,
           floorplanFile ?? undefined,
-          floorplanUrl,
+          floorplanUrl
         );
 
         const createRes = await api.projects.create(formDataPayload);
@@ -201,7 +201,7 @@ export default function NewProjectPage() {
         const formDataPayload = mapToProjectPayload(
           formData,
           floorplanFile ?? undefined,
-          floorplanUrl,
+          floorplanUrl
         );
         Object.entries(payload).forEach(([key, value]) => {
           if (value) formDataPayload.append(key, value as any);
@@ -435,8 +435,8 @@ export default function NewProjectPage() {
                 {floorplanFile
                   ? floorplanFile.name
                   : floorplanUrl
-                    ? "Existing file uploaded"
-                    : "Choose a file…"}
+                  ? "Existing file uploaded"
+                  : "Choose a file…"}
               </span>
               {floorplanUrl && !floorplanFile && (
                 <a

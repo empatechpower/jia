@@ -61,7 +61,7 @@ function ChevronDown({ open }: { open: boolean }) {
 
 /** Format a product config object into readable key-value pairs */
 function formatConfig(
-  config: Record<string, unknown>,
+  config: Record<string, unknown>
 ): Array<{ label: string; value: string }> {
   const labelMap: Record<string, string> = {
     internal_color: "Internal color",
@@ -114,7 +114,7 @@ function formatConfig(
 
   return Object.entries(config)
     .filter(
-      ([k, v]) => v !== null && v !== undefined && v !== "" && !skip.has(k),
+      ([k, v]) => v !== null && v !== undefined && v !== "" && !skip.has(k)
     )
     .map(([k, v]) => {
       let displayValue = String(v);
@@ -416,14 +416,14 @@ export function ShoppingCartPage() {
           setHandleDesign(handleDesignData);
           setAluminium(handleAluminiumDesignData);
           setType(handleTypeData);
-        },
+        }
       )
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
   const total = (cartItem ?? []).reduce(
     (sum: number, item: any) => sum + (Number(item.cost) || 0),
-    0,
+    0
   );
 
   // Delete entire room (all products in it)
@@ -433,7 +433,7 @@ export function ShoppingCartPage() {
       if (!room) return;
       room.products.forEach((p) => handleDeleteProduct(roomId, p._id));
     },
-    [cartItems, handleDeleteProduct],
+    [cartItems, handleDeleteProduct]
   );
 
   // ✅ width groups (match your backend format)
@@ -443,20 +443,20 @@ export function ShoppingCartPage() {
   // ✅ build lookup maps
   const typeMap = Object.fromEntries((type ?? []).map((t: any) => [t._id, t]));
   const handleMap = Object.fromEntries(
-    (handleDesign ?? []).map((h: any) => [h._id, h]),
+    (handleDesign ?? []).map((h: any) => [h._id, h])
   );
   const colorMap = Object.fromEntries(
-    (colors ?? []).map((h: any) => [h._id, h]),
+    (colors ?? []).map((h: any) => [h._id, h])
   );
   const doorFinishing = Object.fromEntries(
-    (aluminium ?? []).map((h: any) => [h._id, h]),
+    (aluminium ?? []).map((h: any) => [h._id, h])
   );
   const productMap = Object.fromEntries(
-    (cartItem ?? []).map((p: any) => [p._id, p]),
+    (cartItem ?? []).map((p: any) => [p._id, p])
   );
 
   const pricingMap = Object.fromEntries(
-    (product ?? []).map((p: any) => [p._id, p]),
+    (product ?? []).map((p: any) => [p._id, p])
   );
 
   // ✅ helper: sketch image (length only)
@@ -502,7 +502,7 @@ export function ShoppingCartPage() {
 
     // 🔹 remove duplicate types
     const uniqueTypes = Array.from(
-      new Map(typesUsed.map((t: any) => [t._id, t])).values(),
+      new Map(typesUsed.map((t: any) => [t._id, t])).values()
     );
 
     return {
@@ -633,7 +633,7 @@ interface CheckoutFormState {
   deliverySameAsProperty: boolean;
   deliveryPostalCode: string;
   deliveryUnit: string;
-  propertyOwnership: "own" | "rented";
+  ownership: "own" | "rented";
   homeZipCode: string;
   homeUnit: string;
   keyDate: string;
@@ -696,12 +696,17 @@ export function CheckoutPage() {
   const {
     userEmail,
     cartItems,
-    propertyInfo,
+
     setCurrentPage,
 
     currentProject,
   } = useApp();
   const [cartItem, setCartItem] = useState<any | null>(null);
+  const [cartRoom, setCartRoom] = useState<any | null>(null);
+  const [, setLoading] = useState(true);
+
+  const [type, setType] = useState<any[] | null>([]);
+  const [product, setProduct] = useState<any[] | null>([]);
 
   const [form, setForm] = useState<CheckoutFormState>({
     fullName: "",
@@ -712,42 +717,58 @@ export function CheckoutPage() {
     deliverySameAsProperty: false,
     deliveryPostalCode: "",
     deliveryUnit: "",
-    propertyOwnership: propertyInfo?.isOwnProperty ? "own" : "rented",
-    homeZipCode: propertyInfo?.zipCode ?? "",
-    homeUnit: propertyInfo?.unit ?? "",
-    keyDate: propertyInfo?.keyDate ?? "",
+    ownership: "rented",
+    homeZipCode: "",
+    homeUnit: "",
+    keyDate: "",
     deliveryAddressDifferent: false,
     paymentMethod: "card",
     agreedToTerms: false,
   });
+
+  useEffect(() => {
+    if (!currentProject || !userEmail) return;
+
+    setForm((prev) => ({
+      ...prev,
+      email: userEmail,
+      ownership: currentProject.propertyOwner,
+      homeZipCode: currentProject.postalCode ?? "",
+      homeUnit: currentProject.unit ?? "",
+      keyDate: currentProject.keyCollectionDate ?? "",
+    }));
+  }, [currentProject, userEmail]);
+
   useEffect(() => {
     api.cart
       .list(currentProject?._id ?? "")
 
       .then((data) => {
         const project = data.response.results;
+        console.log("project", project);
         setCartItem(project);
       })
-      .catch(console.error);
-    api.user
-      .profile()
-
+      .catch(console.error)
+      .finally(() => setLoading(false));
+    api.rooms
+      .listByProject(currentProject?._id ?? "")
       .then((data) => {
         const project = data.response.results;
-        // setCartItem(project);
+        setCartRoom(project);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
   const set = <K extends keyof CheckoutFormState>(
     key: K,
-    value: CheckoutFormState[K],
+    value: CheckoutFormState[K]
   ) => setForm((f) => ({ ...f, [key]: value }));
 
   // Per-room total widths
   const roomWidths = cartItems.map((room) => {
     const totalMm = room.products.reduce((sum, p) => {
       const w = parseInt(
-        String((p.config as Record<string, unknown>)?.width ?? "0"),
+        String((p.config as Record<string, unknown>)?.width ?? "0")
       );
       return sum + (isNaN(w) ? 0 : w);
     }, 0);
@@ -755,31 +776,189 @@ export function CheckoutPage() {
   });
 
   const isValid =
-    form.fullName && form.email && form.phone && form.agreedToTerms;
+    form.fullName.trim().length > 2 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) &&
+    form.phone.trim().length >= 7 &&
+    form.agreedToTerms &&
+    (!form.deliveryAddressDifferent ||
+      form.deliveryPostalCode.trim().length > 0) &&
+    form.homeZipCode.trim().length > 0 &&
+    form.homeUnit.trim().length > 0;
   const total = (cartItem ?? []).reduce(
     (sum: number, item: any) => sum + (Number(item.cost) || 0),
-    0,
+    0
   );
-  const handlePayment = async () => {
+  // const handlePayment = async () => {
+  //   try {
+  //     const res = await api.payment.create_payment(
+  //       total,
+  //       userEmail,
+  //       `order_${Date.now()}`
+  //     );
+
+  //     // adjust based on your API response shape
+  //     const url = res?.response.result;
+
+  //     if (!url) {
+  //       throw new Error("No payment URL returned");
+  //     }
+
+  //     window.location.href = url;
+  //   } catch (error) {
+  //     console.error("Payment error:", error);
+  //     alert("Failed to start payment");
+  //   }
+  // };
+  const handleCheckoutAndPayment = async () => {
     try {
-      const res = await api.payment.create_payment(
+      // 1. Submit checkout (save form + order)
+      const checkoutRes = await api.projects.submitCheckout(
+        currentProject?._id,
+        form
+      );
+      console.log("checkoutRes", checkoutRes);
+      const orderId = checkoutRes?.response?.results.orderNo;
+      // 👈 adjust if your API returns differently
+
+      if (!orderId) {
+        throw new Error("No order_id returned from checkout");
+      }
+
+      // 2. Start payment using that orderId
+      const paymentRes = await api.payment.create_payment(
         total,
-        userEmail,
-        `order_${Date.now()}`,
+        form.email,
+        orderId
       );
 
-      // adjust based on your API response shape
-      const url = res?.response.result;
+      const url = paymentRes?.response?.result;
 
       if (!url) {
         throw new Error("No payment URL returned");
       }
 
+      // 3. Redirect to HitPay
       window.location.href = url;
     } catch (error) {
-      console.error("Payment error:", error);
-      alert("Failed to start payment");
+      console.error("Checkout/Payment error:", error);
+      alert("Failed to proceed to payment");
     }
+  };
+  useEffect(() => {
+    setLoading(true);
+
+    Promise.all([api.series.list(), api.products.get_all_products()])
+      .then(([typeRes, productRes]) => {
+        const handleTypeData = typeRes.response.results;
+        const handleProductData = productRes.response.results;
+
+        setProduct(handleProductData);
+
+        setType(handleTypeData);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+  const isSmallWidth = ["L400mm", "L450mm", "L500mm"];
+  const typeMap = Object.fromEntries((type ?? []).map((t: any) => [t._id, t]));
+
+  const productMap = Object.fromEntries(
+    (cartItem ?? []).map((p: any) => [p._id, p])
+  );
+
+  const pricingMap = Object.fromEntries(
+    (product ?? []).map((p: any) => [p._id, p])
+  );
+
+  // ✅ helper: sketch image (length only)
+  function getSketchImage(t: any, product: any) {
+    const length = product?.pricing?.length;
+    const isSmall = isSmallWidth.includes(length);
+
+    return isSmall ? t.sketchSmall : t.sketchBig;
+  }
+
+  // ✅ helper: render image (length + color)
+  function getRenderImage(t: any, product: any) {
+    const length = product?.pricing?.length;
+    const color = product?.internal_color;
+
+    const isSmall = isSmallWidth.includes(length);
+
+    if (color === "Light") {
+      return isSmall ? t.photoLightSmall : t.photoLightBig;
+    } else {
+      return isSmall ? t.photoDarkSmall : t.photoDarkBig;
+    }
+  }
+
+  // ✅ main transformation
+  const roomsForUI = (cartRoom ?? []).map((room: any) => {
+    // 🔹 attach products + pricing
+
+    const products = (room.items || [])
+      .map((id: string) => productMap[id])
+      .filter(Boolean)
+      .map((p: any) => {
+        const typeData = typeMap[p.type];
+        const pricing = pricingMap[p.item];
+
+        const productWithPricing = {
+          ...p,
+          pricing,
+        };
+
+        return {
+          ...productWithPricing,
+          code: typeData?.code || null,
+          sketchImage: typeData
+            ? getSketchImage(typeData, productWithPricing)
+            : null, // ✅ attach here
+        };
+      });
+
+    // 🔹 get types used in this room
+    const typesUsed = products.map((p: any) => typeMap[p.type]).filter(Boolean);
+
+    // 🔹 remove duplicate types
+    const uniqueTypes = Array.from(
+      new Map(typesUsed.map((t: any) => [t._id, t])).values()
+    );
+
+    return {
+      _id: room._id,
+      name: room.name,
+      products,
+
+      // ✅ sketch images (1 per type)
+      sketchImages: uniqueTypes
+        .map((t: any) => {
+          const product = products.find((p: any) => p.type === t._id);
+          return getSketchImage(t, product);
+        })
+        .filter(Boolean),
+
+      // ✅ render images (1 per type)
+      renderImages: uniqueTypes
+        .map((t: any) => {
+          const product = products.find((p: any) => p.type === t._id);
+          return getRenderImage(t, product);
+        })
+        .filter(Boolean),
+    };
+  });
+  const formatDate = (value: number | string) => {
+    if (!value) return "";
+
+    const date = new Date(value);
+
+    if (isNaN(date.getTime())) return "";
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
   };
   return (
     <div className="min-h-screen bg-[#faf4e6]">
@@ -933,11 +1112,11 @@ export function CheckoutPage() {
                       <button
                         key={opt}
                         className={`px-5 py-2 rounded-full font-['Poppins'] font-medium text-sm transition ${
-                          form.propertyOwnership === opt
+                          form.ownership === opt
                             ? "bg-[#1C1B1F] text-white"
                             : "bg-[#f0f0f0] text-[#555] hover:bg-[#e0e0e0]"
                         }`}
-                        onClick={() => set("propertyOwnership", opt)}
+                        onClick={() => set("ownership", opt)}
                         type="button"
                       >
                         {opt === "own" ? "Own Property" : "Rented Property"}
@@ -983,7 +1162,7 @@ export function CheckoutPage() {
                     onChange={(e) => set("keyDate", e.target.value)}
                     placeholder={new Date().toLocaleDateString("en-SG")}
                     type="date"
-                    value={form.keyDate}
+                    value={formatDate(form.keyDate)}
                   />
                 </div>
               </div>
@@ -1128,7 +1307,7 @@ export function CheckoutPage() {
 
               <div className="p-6 space-y-5">
                 {/* Room by room */}
-                {cartItems.map((room, ri) => {
+                {roomsForUI?.map((room: any, ri: any) => {
                   const widthMm = roomWidths[ri]?.totalMm;
                   return (
                     <div key={room._id}>
@@ -1143,21 +1322,21 @@ export function CheckoutPage() {
                         )}
                       </div>
                       <div className="space-y-2">
-                        {room.products.map((p) => (
+                        {room?.products?.map((p: any) => (
                           <div key={p._id} className="flex items-center gap-3">
                             <div className="w-12 h-14 shrink-0 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
                               <img
-                                alt={p.name}
+                                alt={`Type ${p.code}`}
                                 className="w-full h-full object-contain"
-                                src={p.image}
+                                src={p.sketchImage}
                               />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-['Poppins'] text-sm text-[#1C1B1F] font-medium">
-                                {p.name}
+                                Type {p.code}
                               </p>
                               <p className="font-['Poppins'] text-sm text-[#1C1B1F]">
-                                ${p.price.toFixed(2)}
+                                ${p?.cost?.toFixed(2)}
                               </p>
                             </div>
                           </div>
@@ -1215,8 +1394,8 @@ export function CheckoutPage() {
                       ? "bg-[#1C1B1F] hover:bg-[#333] active:scale-[0.98]"
                       : "bg-[#999] cursor-not-allowed"
                   }`}
-                  // disabled={!isValid}
-                  onClick={handlePayment}
+                  disabled={!isValid}
+                  onClick={handleCheckoutAndPayment}
                 >
                   Pay ${total.toFixed(2)} SGD
                 </button>
