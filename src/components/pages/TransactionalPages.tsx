@@ -496,7 +496,7 @@ export function ShoppingCartPage() {
         door_finishing:
           doorFinishing[p.selected_aluminium_doorType]?.name || null,
       }));
-
+ 
     // 🔹 get types used in this room
     const typesUsed = products.map((p: any) => typeMap[p.type]).filter(Boolean);
 
