@@ -1,5 +1,5 @@
 import { getPrice } from "@/config/kitchenPricing";
-import type { CartProduct, ProductConfig } from "@/types";
+import type { ProductConfig } from "@/types";
 import {
   KITCHEN_PRODUCT_NAMES,
   WARDROBE_PRODUCT_NAMES,
@@ -8,6 +8,7 @@ import {
   SIDE_PANEL_COSTS,
   DEFAULT_WARDROBE_PRICE,
 } from "@/constants";
+import { CartProduct } from "@/components/pages/TransactionalPages";
 
 /**
  * Resolve a human-readable product name from its ID.
@@ -33,7 +34,7 @@ export function resolveSeriesName(seriesId: string): string {
 export function calculateProductPrice(
   area: string,
   productId: string,
-  config?: ProductConfig
+  config?: ProductConfig,
 ): number {
   let base = DEFAULT_WARDROBE_PRICE;
 
@@ -52,7 +53,7 @@ export function calculateProductPrice(
  * Sum the total number of products across all cart rooms.
  */
 export function countCartItems(
-  cartItems: Array<{ products: CartProduct[] }>
+  cartItems: Array<{ products: CartProduct[] }>,
 ): number {
   return cartItems.reduce((sum, room) => sum + room.products.length, 0);
 }

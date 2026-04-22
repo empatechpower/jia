@@ -9,7 +9,6 @@ import {
 import type {
   Page,
   CartRoom,
-  CartProduct,
   Room,
   KitchenInfo,
   PropertyInfo,
@@ -17,6 +16,7 @@ import type {
 } from "@/types";
 import { calculateProductPrice, countCartItems } from "@/utils";
 import { api, setLogoutHandler } from "@/services/api";
+import { CartProduct } from "@/components/pages/TransactionalPages";
 
 // ─── Shape ───────────────────────────────────────────────────────────────────
 const TOKEN_KEY = "jia_token";
