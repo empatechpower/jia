@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ChangeEvent, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { api } from "@/services/api";
 import { CartIconWithBadge } from "@/assets/icons";
-
+import { uploadFile } from "@/services/cloudinary"; // adjust path
 const PROPERTY_TYPES = ["BTO", "Resale", "Condo", "Landed"] as const;
 
 // ─── Small components ─────────────────────────────────────────────────────────
@@ -133,11 +133,7 @@ export default function NewProjectPage() {
     return Object.keys(e).length === 0;
   }
 
-  function mapToProjectPayload(
-    formData: any,
-    floorplanFile?: File,
-    floorplanUrl?: string
-  ) {
+  function mapToProjectPayload(formData: any, floorplanUrl?: string) {
     const fd = new FormData();
 
     fd.append("propertyType", formData.propertyType);
@@ -145,14 +141,13 @@ export default function NewProjectPage() {
     fd.append("postalCode", formData.zipCode);
     fd.append("unit", formData.unit);
     fd.append("roomNumber", formData.numRooms);
-    // fd.append("keyCollectionDate", formData.keyDate);
+
     if (formData.keyDate) {
       fd.append("keyCollectionDate", formData.keyDate);
     }
-    // ✅ FILE HANDLING FIX
-    if (floorplanFile) {
-      fd.append("floorPlan", floorplanFile);
-    } else if (floorplanUrl) {
+
+    // ✅ ONLY send URL now
+    if (floorplanUrl) {
       fd.append("floorPlan", floorplanUrl);
     }
 
@@ -165,64 +160,55 @@ export default function NewProjectPage() {
     try {
       setLoading(true);
 
-      const payload = {
-        propertyType: formData.propertyType,
-        propertyOwner: formData.ownership,
-        zipCode: formData.zipCode,
-        unit: formData.unit,
-        keyCollectionDate: formData.keyDate,
-        // add file if exists
-        ...(floorplanFile && { floorPlan: floorplanFile }),
-      };
+      let uploadedUrl = floorplanUrl;
+
+      // 🚀 1. Upload to Cloudinary if new file exists
+      if (floorplanFile) {
+        const result = await uploadFile(floorplanFile);
+        uploadedUrl = result.secure_url;
+      }
 
       let projectId: string;
 
-      if (!project) {
+      if (!project || !project._id) {
         // =========================
         // ✅ CREATE
         // =========================
 
-        const formDataPayload = mapToProjectPayload(
-          formData,
-          floorplanFile ?? undefined,
-          floorplanUrl
+        const formDataPayload = mapToProjectPayload(formData, uploadedUrl);
+        console.log(
+          "Creating project with data:",
+          Object.fromEntries(formDataPayload.entries()),
         );
-
         const createRes = await api.projects.create(formDataPayload);
-
         projectId = createRes.project_id;
       } else {
         // =========================
         // ✅ UPDATE
         // =========================
+
         projectId = project._id;
 
-        // const formDataPayload = new FormData();
-        const formDataPayload = mapToProjectPayload(
-          formData,
-          floorplanFile ?? undefined,
-          floorplanUrl
-        );
-        Object.entries(payload).forEach(([key, value]) => {
-          if (value) formDataPayload.append(key, value as any);
-        });
+        const formDataPayload = mapToProjectPayload(formData, uploadedUrl);
 
         formDataPayload.append("project_id", projectId);
+
         await api.projects.update(projectId, formDataPayload);
       }
 
       // =========================
       // NEXT STEP
       // =========================
+
       setPropertyInfo({
         propertyType: formData.propertyType,
         isOwnProperty: formData.ownership,
         zipCode: formData.zipCode,
         unit: formData.unit,
         keyDate: formData.keyDate,
-        projectId: projectId,
+        projectId,
       });
-
+      // setProject()
       setNumberOfRooms(parseInt(formData.numRooms, 10));
       setCurrentPage("areaSelection");
     } catch (err) {
@@ -236,9 +222,8 @@ export default function NewProjectPage() {
     const file = e.target.files?.[0] ?? null;
     setFloorplanFile(file);
 
-    // If user uploads a new file, clear old URL
     if (file) {
-      setFloorplanUrl("");
+      setFloorplanUrl(""); // clear old Cloudinary URL
     }
   }
   const formatDate = (value: number | string) => {
@@ -423,7 +408,10 @@ export default function NewProjectPage() {
               Upload Floorplan{" "}
               {/* <span className="text-[#999] font-normal">(optional)</span> */}
             </label>
-            <label className="flex items-center gap-3 w-full bg-[#ececec] rounded-lg px-4 py-3 cursor-pointer hover:bg-[#e0e0e0] transition">
+            <label
+              className="flex items-center gap-3 w-full bg-[#ececec] rounded-lg px-4 py-3 cursor-pointer hover:bg-[#e0e0e0] transition"
+              htmlFor="floorplan-upload"
+            >
               <svg
                 className="w-5 h-5 text-[#878787]"
                 fill="currentColor"
@@ -435,8 +423,8 @@ export default function NewProjectPage() {
                 {floorplanFile
                   ? floorplanFile.name
                   : floorplanUrl
-                  ? "Existing file uploaded"
-                  : "Choose a file…"}
+                    ? "Existing file uploaded"
+                    : "Choose a file…"}
               </span>
               {floorplanUrl && !floorplanFile && (
                 <a
@@ -449,10 +437,11 @@ export default function NewProjectPage() {
                 </a>
               )}
               <input
-                accept=".pdf,.jpg,.jpeg,.png"
-                className="sr-only"
-                onChange={handleFileChange}
+                id="floorplan-upload"
                 type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="hidden"
+                onChange={handleFileChange}
               />
             </label>
           </div>
