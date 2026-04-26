@@ -374,24 +374,30 @@ export function ShoppingCartPage() {
   const [colors, setColors] = useState<any[] | null>([]);
 
   useEffect(() => {
-    api.cart
-      .list(currentProject?._id ?? "")
+    if (!currentProject?._id) return;
 
-      .then((data) => {
-        const project = data.response.results;
-        setCartItem(project);
+    let isMounted = true;
+    setLoading(true);
+
+    Promise.all([
+      api.cart.list(currentProject._id),
+      api.rooms.listByProject(currentProject._id),
+    ])
+      .then(([cartRes, roomRes]) => {
+        if (!isMounted) return;
+
+        setCartItem(cartRes.response.results || []);
+        setCartRoom(roomRes.response.results || []);
       })
       .catch(console.error)
-      .finally(() => setLoading(false));
-    api.rooms
-      .listByProject(currentProject?._id ?? "")
-      .then((data) => {
-        const project = data.response.results;
-        setCartRoom(project);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentProject?._id]);
   useEffect(() => {
     setLoading(true);
 
@@ -527,7 +533,7 @@ export function ShoppingCartPage() {
         .filter(Boolean),
     };
   });
-
+  console.log("current project", currentProject);
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}

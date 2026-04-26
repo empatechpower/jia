@@ -26,9 +26,10 @@ export default function RoomSelectionPage() {
     setSelectedRoom(roomName);
     setCurrentPage("seriesSelection");
   }
+  console.log("propertyInfo?.projectId", propertyInfo);
   useEffect(() => {
     if (!propertyInfo?.projectId || !numberOfRooms) return;
-
+    console.log("propertyInfo?.projectId", propertyInfo?.projectId);
     let isMounted = true;
 
     const syncRooms = async () => {

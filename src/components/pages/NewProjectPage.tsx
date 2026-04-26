@@ -68,6 +68,7 @@ interface FormData {
 }
 export default function NewProjectPage() {
   const {
+    setCurrentProject,
     setCurrentPage,
     setNumberOfRooms,
     setPropertyInfo,
@@ -176,12 +177,10 @@ export default function NewProjectPage() {
         // =========================
 
         const formDataPayload = mapToProjectPayload(formData, uploadedUrl);
-        console.log(
-          "Creating project with data:",
-          Object.fromEntries(formDataPayload.entries()),
-        );
+
         const createRes = await api.projects.create(formDataPayload);
-        projectId = createRes.project_id;
+        projectId = createRes.response.project_id;
+        console.log("Created project with ID:", createRes);
       } else {
         // =========================
         // ✅ UPDATE
@@ -199,7 +198,7 @@ export default function NewProjectPage() {
       // =========================
       // NEXT STEP
       // =========================
-
+      setCurrentProject(project);
       setPropertyInfo({
         propertyType: formData.propertyType,
         isOwnProperty: formData.ownership,
@@ -208,6 +207,7 @@ export default function NewProjectPage() {
         keyDate: formData.keyDate,
         projectId,
       });
+
       // setProject()
       setNumberOfRooms(parseInt(formData.numRooms, 10));
       setCurrentPage("areaSelection");

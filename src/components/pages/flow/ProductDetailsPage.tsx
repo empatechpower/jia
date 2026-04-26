@@ -452,7 +452,12 @@ export default function ProductDetailsPage() {
     if (cfg?.blumRunnerUpgrade === "Yes") {
       add((type?.numberOfDrawers || 0) * (type?.blumRunnerCost || 0));
     }
-
+    console.log(
+      "type?.numberOfDrawers",
+      type?.numberOfDrawers,
+      "type?.blumRunnerCost",
+      type?.blumRunnerCost,
+    );
     // =====================
     // DRAWER LOCKS
     // =====================
