@@ -418,6 +418,7 @@ export const api = {
 
     /** GET /obj/project?constraints=[...] — list for current user */
     get_user_project: () => dataGet<{ response: any }>("/get_user_project"),
+    get_paid_project: () => dataGet<{ response: any }>("/get_paid_projects"),
 
     /** GET /obj/project/:id */
     get: (id: string) => dataGet<{ response: Project }>(`/project/${id}`),
@@ -460,7 +461,7 @@ export const api = {
       ),
     /** PATCH /wf/rename-room */
     rename: (roomId: string, name: string) =>
-      request<void>("POST", "/rename-room", { room_id: roomId, name }),
+      request<void>("POST", "/rename_room", { roomId: roomId, name }),
 
     /** GET /obj/room?constraints=[{"key":"project_id"...}] */
     // listByProject: (projectId: string) =>

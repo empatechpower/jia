@@ -14,7 +14,7 @@ import type {
   PropertyInfo,
   ProductConfig,
 } from "@/types";
-import { calculateProductPrice, countCartItems } from "@/utils";
+import { calculateProductPrice } from "@/utils";
 import { api, setLogoutHandler } from "@/services/api";
 import { CartProduct } from "@/components/pages/TransactionalPages";
 
@@ -182,7 +182,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Cart
   const [cartItems, setCartItems] = useState<CartRoom[]>([]);
-  const cartItemCount = countCartItems(cartItems);
+  const cartItemCount = currentProject?.items?.length ?? 0;
 
   useEffect(() => {
     setLogoutHandler(handleLogout);
