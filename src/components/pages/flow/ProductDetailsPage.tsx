@@ -236,25 +236,16 @@ export default function ProductDetailsPage() {
     "internal-color",
   );
   const toggle = (id: string) => setOpenSection((s) => (s === id ? null : id));
-
+  const hasLocks = cfg.numberOfLocks != null && cfg.numberOfLocks !== "";
   const complete: Record<string, boolean> = {
     "internal-color": !!cfg.internalColor,
     "external-color": !!cfg.externalColor,
     width: !!cfg.width,
-
     door: isLShapeProduct || !!cfg.doorOption,
-
     "side-panel": isLShapeProduct || isTopHungSeries || !!cfg.sidePanel,
-    "drawer-lock":
-      type?.drawer !== true || cfg.addLock !== "Yes" || !!cfg.numberOfLocks,
-    // "drawer-lock":
-    //   isLShapeProduct ||
-    //   isTopHungSeries ||
-    //   cfg.addLock === "No" ||
-    //   (!!cfg.numberOfLocks && cfg.addLock === "Yes"),
-    "led-strip": type?.ledLight !== true || !!cfg.ledStrip,
-    // "led-strip":
-    //   isTopHungSeries || cfg.ledStrip === "Yes" || cfg.ledStrip === "No",
+    "drawer-lock": cfg.addLock === "No" ? true : hasLocks,
+    ledStrip: !!cfg.ledStrip,
+    "blum-runner": !!cfg.blumRunnerUpgrade,
   };
 
   const isFormValid = Object.values(complete).every(Boolean);
@@ -452,12 +443,6 @@ export default function ProductDetailsPage() {
     if (cfg?.blumRunnerUpgrade === "Yes") {
       add((type?.numberOfDrawers || 0) * (type?.blumRunnerCost || 0));
     }
-    console.log(
-      "type?.numberOfDrawers",
-      type?.numberOfDrawers,
-      "type?.blumRunnerCost",
-      type?.blumRunnerCost,
-    );
     // =====================
     // DRAWER LOCKS
     // =====================
@@ -1043,7 +1028,7 @@ export default function ProductDetailsPage() {
                       title="LED Strip"
                       subtitle={cfg.ledStrip ?? undefined}
                       isOpen={openSection === "led-strip"}
-                      isComplete={complete["led-strip"]}
+                      isComplete={complete["ledStrip"]}
                       onToggle={() => toggle("led-strip")}
                     >
                       <div className="grid grid-cols-2 gap-3">
@@ -1067,7 +1052,7 @@ export default function ProductDetailsPage() {
                       title="Blum Runner Upgrade"
                       subtitle={cfg.blumRunnerUpgrade ?? ""}
                       isOpen={openSection === "kitchen-blum"}
-                      isComplete={complete["kitchen-blum"]}
+                      isComplete={complete["blum-runner"]}
                       onToggle={() => toggle("kitchen-blum")}
                     >
                       <div className="grid grid-cols-2 gap-3 mb-3">

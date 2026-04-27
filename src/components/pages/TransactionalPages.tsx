@@ -159,6 +159,69 @@ function formatConfig(
     .filter(({ label }) => label !== "numlock");
 }
 
+// ─── Image Modal ──────────────────────────────────────────────────────────────
+
+function ImageModal({
+  src,
+  alt,
+  onClose,
+}: {
+  src: string;
+  alt: string;
+  onClose: () => void;
+}) {
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      role="dialog"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white rounded-2xl w-full max-w-[70vw] max-h-[90vh] flex items-center justify-center p-6 md:p-10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          aria-label="Close"
+          className="absolute top-3 right-3 p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition"
+          onClick={onClose}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M6 18L18 6M6 6l12 12"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
+          </svg>
+        </button>
+
+        {/* Image */}
+        <img
+          alt={alt}
+          className="max-w-full max-h-[75vh] object-contain"
+          src={src}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Shared icons ─────────────────────────────────────────────────────────────
 
 function BackIcon() {
@@ -368,49 +431,52 @@ function OrderDetailsPage({
   );
 
   // ── Same room-building logic as cart page ──────────────────────────────────
-  const roomsForUI = cartRooms.map((room: any) => {
-    const products = (room.items ?? [])
-      .map((id: string) => productMap[id])
-      .filter(Boolean)
-      .map((p: any) => ({
-        ...p,
-        pricing: pricingMap[p.item],
-        code: typeMap[p.type]?.code ?? null,
-        laminate_color: colorMap[p.external_color]?.colorDisplayName ?? null,
-        handle_design: handleMap[p.handle_design_text]?.name ?? null,
-        door_finishing: finishMap[p.selected_aluminium_doorType]?.name ?? null,
-      }));
+  const roomsForUI = cartRooms
+    .map((room: any) => {
+      const products = (room.items ?? [])
+        .map((id: string) => productMap[id])
+        .filter(Boolean)
+        .map((p: any) => ({
+          ...p,
+          pricing: pricingMap[p.item],
+          code: typeMap[p.type]?.code ?? null,
+          laminate_color: colorMap[p.external_color]?.colorDisplayName ?? null,
+          handle_design: handleMap[p.handle_design_text]?.name ?? null,
+          door_finishing:
+            finishMap[p.selected_aluminium_doorType]?.name ?? null,
+        }));
 
-    const typesUsed = Array.from(
-      new Map(
-        products
-          .map((p: any) => [p.type, typeMap[p.type]])
-          .filter(([, v]: any) => !!v),
-      ).values(),
-    );
+      const typesUsed = Array.from(
+        new Map(
+          products
+            .map((p: any) => [p.type, typeMap[p.type]])
+            .filter(([, v]: any) => !!v),
+        ).values(),
+      );
 
-    return {
-      id: room._id,
-      name: room.name,
-      products,
-      sketchImages: typesUsed
-        .map((t: any) =>
-          getSketchImage(
-            t,
-            products.find((p: any) => p.type === t._id),
-          ),
-        )
-        .filter(Boolean),
-      renderImages: typesUsed
-        .map((t: any) =>
-          getRenderImage(
-            t,
-            products.find((p: any) => p.type === t._id),
-          ),
-        )
-        .filter(Boolean),
-    };
-  });
+      return {
+        id: room._id,
+        name: room.name,
+        products,
+        sketchImages: typesUsed
+          .map((t: any) =>
+            getSketchImage(
+              t,
+              products.find((p: any) => p.type === t._id),
+            ),
+          )
+          .filter(Boolean),
+        renderImages: typesUsed
+          .map((t: any) =>
+            getRenderImage(
+              t,
+              products.find((p: any) => p.type === t._id),
+            ),
+          )
+          .filter(Boolean),
+      };
+    })
+    .filter((room: any) => room.products.length > 0);
 
   // ── Pricing totals ─────────────────────────────────────────────────────────
   const total = order.paidAmount ?? 0;
@@ -782,6 +848,10 @@ function RoomSection({
   onDeleteProduct,
 }: RoomSectionProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [modalImage, setModalImage] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
   return (
     <section className="border-b border-gray-200 pb-6">
       <div className="flex items-center justify-between py-3">
@@ -815,8 +885,11 @@ function RoomSection({
               </p>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {room?.sketchImages.map((src, i) => (
-                  <div
+                  <button
                     key={i}
+                    onClick={() =>
+                      setModalImage({ src, alt: `Sketch ${i + 1}` })
+                    }
                     className="shrink-0 w-[80px] h-[110px] rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
                   >
                     <img
@@ -824,7 +897,7 @@ function RoomSection({
                       className="w-full h-full object-contain"
                       src={src}
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -836,8 +909,11 @@ function RoomSection({
               </p>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {room?.renderImages.map((src, i) => (
-                  <div
+                  <button
                     key={i}
+                    onClick={() =>
+                      setModalImage({ src, alt: `3D Render ${i + 1}` })
+                    }
                     className="shrink-0 w-[80px] h-[110px] rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
                   >
                     <img
@@ -845,7 +921,7 @@ function RoomSection({
                       className="w-full h-full object-contain"
                       src={src}
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -867,6 +943,14 @@ function RoomSection({
             </div>
           </div>
         </div>
+      )}
+      {/* Image zoom modal — rendered per RoomSection so only one is ever open */}
+      {modalImage && (
+        <ImageModal
+          src={modalImage.src}
+          alt={modalImage.alt}
+          onClose={() => setModalImage(null)}
+        />
       )}
     </section>
   );
@@ -969,49 +1053,52 @@ export function ShoppingCartPage() {
   const productMap = Object.fromEntries(cartItem.map((p: any) => [p._id, p]));
   const pricingMap = Object.fromEntries(product.map((p: any) => [p._id, p]));
 
-  const roomsForUI = cartRoom.map((room: any) => {
-    const products = (room.items ?? [])
-      .map((id: string) => productMap[id])
-      .filter(Boolean)
-      .map((p: any) => ({
-        ...p,
-        pricing: pricingMap[p.item],
-        code: typeMap[p.type]?.code ?? null,
-        handle_design: handleMap[p.handle_design_text]?.name ?? null,
-        laminate_color: colorMap[p.external_color]?.colorDisplayName ?? null,
-        door_finishing: finishMap[p.selected_aluminium_doorType]?.name ?? null,
-      }));
+  const roomsForUI = cartRoom
+    .map((room: any) => {
+      const products = (room.items ?? [])
+        .map((id: string) => productMap[id])
+        .filter(Boolean)
+        .map((p: any) => ({
+          ...p,
+          pricing: pricingMap[p.item],
+          code: typeMap[p.type]?.code ?? null,
+          handle_design: handleMap[p.handle_design_text]?.name ?? null,
+          laminate_color: colorMap[p.external_color]?.colorDisplayName ?? null,
+          door_finishing:
+            finishMap[p.selected_aluminium_doorType]?.name ?? null,
+        }));
 
-    const uniqueTypes = Array.from(
-      new Map(
-        products
-          .map((p: any) => [p.type, typeMap[p.type]])
-          .filter(([, v]: any) => !!v),
-      ).values(),
-    );
+      const uniqueTypes = Array.from(
+        new Map(
+          products
+            .map((p: any) => [p.type, typeMap[p.type]])
+            .filter(([, v]: any) => !!v),
+        ).values(),
+      );
 
-    return {
-      _id: room._id,
-      name: room.name,
-      products,
-      sketchImages: uniqueTypes
-        .map((t: any) =>
-          getSketchImage(
-            t,
-            products.find((p: any) => p.type === t._id),
-          ),
-        )
-        .filter(Boolean),
-      renderImages: uniqueTypes
-        .map((t: any) =>
-          getRenderImage(
-            t,
-            products.find((p: any) => p.type === t._id),
-          ),
-        )
-        .filter(Boolean),
-    };
-  });
+      return {
+        _id: room._id,
+        name: room.name,
+        products,
+        sketchImages: uniqueTypes
+          .map((t: any) =>
+            getSketchImage(
+              t,
+              products.find((p: any) => p.type === t._id),
+            ),
+          )
+          .filter(Boolean),
+        renderImages: uniqueTypes
+          .map((t: any) =>
+            getRenderImage(
+              t,
+              products.find((p: any) => p.type === t._id),
+            ),
+          )
+          .filter(Boolean),
+      };
+    })
+    .filter((room: any) => room.products.length > 0);
 
   // ── Order History inner component (scoped here to share paidProject state) ──
 
@@ -1340,54 +1427,56 @@ export function CheckoutPage() {
     const length = p?.pricing?.length;
     return isSmallWidth.includes(length) ? t.sketchSmall : t.sketchBig;
   }
+  console.log("cartRoom", cartRoom);
+  const roomsForUI = cartRoom
+    .map((room: any) => {
+      const products = (room.items ?? [])
+        .map((id: string) => productMap[id])
+        .filter(Boolean)
+        .map((p: any) => {
+          const typeData = typeMap[p.type];
+          const pricing = pricingMap[p.item];
+          const withPricing = { ...p, pricing };
+          return {
+            ...withPricing,
+            code: typeData?.code ?? null,
+            sketchImage: typeData
+              ? getSketchImageLocal(typeData, withPricing)
+              : null,
+          };
+        });
 
-  const roomsForUI = cartRoom.map((room: any) => {
-    const products = (room.items ?? [])
-      .map((id: string) => productMap[id])
-      .filter(Boolean)
-      .map((p: any) => {
-        const typeData = typeMap[p.type];
-        const pricing = pricingMap[p.item];
-        const withPricing = { ...p, pricing };
-        return {
-          ...withPricing,
-          code: typeData?.code ?? null,
-          sketchImage: typeData
-            ? getSketchImageLocal(typeData, withPricing)
-            : null,
-        };
-      });
+      const uniqueTypes = Array.from(
+        new Map(
+          products
+            .map((p: any) => [p.type, typeMap[p.type]])
+            .filter(([, v]: any) => !!v),
+        ).values(),
+      );
 
-    const uniqueTypes = Array.from(
-      new Map(
-        products
-          .map((p: any) => [p.type, typeMap[p.type]])
-          .filter(([, v]: any) => !!v),
-      ).values(),
-    );
-
-    return {
-      _id: room._id,
-      name: room.name,
-      products,
-      sketchImages: uniqueTypes
-        .map((t: any) =>
-          getSketchImage(
-            t,
-            products.find((p: any) => p.type === t._id),
-          ),
-        )
-        .filter(Boolean),
-      renderImages: uniqueTypes
-        .map((t: any) =>
-          getRenderImage(
-            t,
-            products.find((p: any) => p.type === t._id),
-          ),
-        )
-        .filter(Boolean),
-    };
-  });
+      return {
+        _id: room._id,
+        name: room.name,
+        products,
+        sketchImages: uniqueTypes
+          .map((t: any) =>
+            getSketchImage(
+              t,
+              products.find((p: any) => p.type === t._id),
+            ),
+          )
+          .filter(Boolean),
+        renderImages: uniqueTypes
+          .map((t: any) =>
+            getRenderImage(
+              t,
+              products.find((p: any) => p.type === t._id),
+            ),
+          )
+          .filter(Boolean),
+      };
+    })
+    .filter((room: any) => room.products.length > 0);
 
   const formatDateLocal = (value: number | string) => {
     if (!value) return "";
