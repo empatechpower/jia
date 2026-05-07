@@ -68,7 +68,7 @@ export default function HeaderAuth({
   ];
 
   return (
-    <header className="absolute top-0 left-0 w-full z-50">
+    <header className="fixed top-0 left-0 w-full z-50 bg-gradient-to-b from-black/100 to-black/0">
       <div className="relative h-[80px] md:h-[120px]">
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
 
@@ -109,7 +109,7 @@ export default function HeaderAuth({
               <button
                 aria-expanded={userMenuOpen}
                 aria-haspopup="menu"
-                className="bg-white/30 hover:bg-white/40 transition px-6 py-2 rounded-[20px] font-['Poppins'] font-medium text-base text-white flex items-center gap-2"
+                className="bg-[#70685e] hover:bg-white/40 transition px-6 py-2 rounded-[20px] font-['Poppins'] font-medium text-base text-white flex items-center gap-2"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
                 <span className="max-w-[160px] truncate">{userEmail}</span>

@@ -10,7 +10,9 @@ const WorkDetailsPage = lazy(
   () => import("@/components/pages/WorkDetailsPage"),
 );
 const NewProjectPage = lazy(() => import("@/components/pages/NewProjectPage"));
-
+const ForgotPasswordPage = lazy(
+  () => import("@/components/pages/ForgotPasswordPage"),
+);
 // Product-selection flow (authenticated users only)
 const AreaSelectionPage = lazy(
   () => import("@/components/pages/flow/AreaSelectionPage"),
@@ -96,6 +98,7 @@ function Router() {
     productSelection: <ProductSelectionPage />,
     productDetails: <ProductDetailsPage />,
     cart: <ShoppingCartPage />,
+    forgotPassword: <ForgotPasswordPage />,
     checkout: <CheckoutPage />,
     profile: <ProfilePage />,
     terms: <TermsAndConditionsPage />,

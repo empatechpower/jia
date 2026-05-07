@@ -9,7 +9,6 @@ import {
   ImageSwatch,
 } from "./configurator/ConfiguratorComponents";
 import {
-  LAMINATE_COLORS,
   SIDE_PANEL_OPTIONS,
   PRODUCT_GALLERY_IMAGES,
   EMPTY_CONFIG,
@@ -18,6 +17,7 @@ import {
 import { CartIconWithBadge } from "@/assets/icons";
 import { kitchenProductPricing } from "@/config/kitchenPricing";
 import { api } from "@/services/api";
+import { Lightbox } from "@/components/common/Lightbox";
 
 const DRAWER_COUNT: Record<string, number> = {
   "bottom-w-2-drawer": 2,
@@ -34,50 +34,50 @@ function formatPrice(n: number) {
   }).format(n);
 }
 
-function Lightbox({
-  url,
-  alt,
-  onClose,
-}: {
-  url: string;
-  alt: string;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      aria-modal="true"
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-      role="dialog"
-      onClick={onClose}
-    >
-      <button
-        aria-label="Close"
-        className="absolute top-4 right-4 text-white"
-        onClick={onClose}
-      >
-        <svg
-          className="w-8 h-8"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M6 18L18 6M6 6l12 12"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-          />
-        </svg>
-      </button>
-      <img
-        alt={alt}
-        className="max-w-full max-h-[90vh] object-contain rounded-xl"
-        src={url}
-        onClick={(e) => e.stopPropagation()}
-      />
-    </div>
-  );
-}
+// function Lightbox({
+//   url,
+//   alt,
+//   onClose,
+// }: {
+//   url: string;
+//   alt: string;
+//   onClose: () => void;
+// }) {
+//   return (
+//     <div
+//       aria-modal="true"
+//       className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+//       role="dialog"
+//       onClick={onClose}
+//     >
+//       <button
+//         aria-label="Close"
+//         className="absolute top-4 right-4 text-white"
+//         onClick={onClose}
+//       >
+//         <svg
+//           className="w-8 h-8"
+//           fill="none"
+//           stroke="currentColor"
+//           viewBox="0 0 24 24"
+//         >
+//           <path
+//             d="M6 18L18 6M6 6l12 12"
+//             strokeLinecap="round"
+//             strokeLinejoin="round"
+//             strokeWidth={2}
+//           />
+//         </svg>
+//       </button>
+//       <img
+//         alt={alt}
+//         className="max-w-full max-h-[90vh] object-contain rounded-xl"
+//         src={url}
+//         onClick={(e) => e.stopPropagation()}
+//       />
+//     </div>
+//   );
+// }
 
 function AddToCartModal({
   roomName,
@@ -235,13 +235,41 @@ export default function ProductDetailsPage() {
   const [openSection, setOpenSection] = useState<string | null>(
     "internal-color",
   );
+  const isDoorComplete = (() => {
+    if (isLShapeProduct) return true;
+    if (!cfg.doorOption) return false;
+
+    const isTimber =
+      cfg.doorOption === "Single Timber Door" ||
+      cfg.doorOption === "Double Timber Door";
+
+    const isAluminium =
+      cfg.doorOption === "With aluminium single door with full height handle" ||
+      cfg.doorOption === "With aluminium double door with full height handle";
+
+    const isNoDoor = cfg.doorOption === "No Door";
+
+    if (isNoDoor) return true;
+
+    if (isTimber) {
+      // Must have: handle design + handle color
+      return !!cfg.handleDesign && !!cfg.handleColor;
+    }
+
+    if (isAluminium) {
+      // Must have: frame color + door finishing
+      return !!cfg.aluminiumFrameColor && !!cfg.aluminiumDoorFinishing;
+    }
+
+    return !!cfg.doorOption;
+  })();
   const toggle = (id: string) => setOpenSection((s) => (s === id ? null : id));
   const hasLocks = cfg.numberOfLocks != null && cfg.numberOfLocks !== "";
   const complete: Record<string, boolean> = {
     "internal-color": !!cfg.internalColor,
     "external-color": !!cfg.externalColor,
     width: !!cfg.width,
-    door: isLShapeProduct || !!cfg.doorOption,
+    door: isDoorComplete,
     "side-panel": isLShapeProduct || isTopHungSeries || !!cfg.sidePanel,
     "drawer-lock": cfg.addLock === "No" ? true : hasLocks,
     ledStrip: !!cfg.ledStrip,
@@ -251,9 +279,11 @@ export default function ProductDetailsPage() {
   const isFormValid = Object.values(complete).every(Boolean);
 
   const [showCartModal, setShowCartModal] = useState(false);
-  const [zoomImg, setZoomImg] = useState<{ url: string; alt: string } | null>(
-    null,
-  );
+  const [, setZoomImg] = useState<{ url: string; alt: string } | null>(null);
+  const [lightbox, setLightbox] = useState<{
+    images: { url: string; alt: string; id?: string }[];
+    index: number;
+  } | null>(null);
   const [showMoreInfo, setShowMoreInfo] = useState(false);
   const [lengthData, setLengthData] = useState<any>(null);
 
@@ -298,10 +328,9 @@ export default function ProductDetailsPage() {
     setCurrentPage(previousPage === "cart" ? "cart" : "productSelection");
   }
 
-  const selectedLaminateName = LAMINATE_COLORS.find(
-    (c) => c.id === cfg.externalColor,
-  )?.name;
-
+  const selectedLaminateName = (colors ?? []).find(
+    (c: any) => c._id === cfg.externalColor,
+  )?.colorDisplayName;
   function renderDoorOptions() {
     let options: string[];
     if (!cfg.width)
@@ -346,6 +375,11 @@ export default function ProductDetailsPage() {
   }, [products]);
 
   const isLight = cfg.internalColor === "Light";
+  const colorImages = (colors ?? []).map((c: any) => ({
+    url: `https:${c.sample}`,
+    alt: c.colorDisplayName,
+    id: c._id,
+  }));
 
   const mainImage = isLight
     ? isSmallWidth
@@ -430,29 +464,18 @@ export default function ProductDetailsPage() {
       discounted += v;
     };
 
-    // =====================
-    // LED LIGHT
-    // =====================
     if (cfg?.ledStrip === "Yes" && type?.ledLight) {
       add(lengthData?.ledPrice);
     }
 
-    // =====================
-    // BLUM RUNNER
-    // =====================
     if (cfg?.blumRunnerUpgrade === "Yes") {
       add((type?.numberOfDrawers || 0) * (type?.blumRunnerCost || 0));
     }
-    // =====================
-    // DRAWER LOCKS
-    // =====================
+
     if (cfg?.addLock === "Yes") {
-      add((cfg?.numberOfLocks || 0) * 15); // (you don't have price yet)
+      add((cfg?.numberOfLocks || 0) * 15);
     }
 
-    // =====================
-    // SIDE PANEL
-    // =====================
     if (cfg?.sidePanel) {
       const selected = SIDE_PANEL_OPTIONS.find((o) => o.id === cfg.sidePanel);
 
@@ -461,7 +484,7 @@ export default function ProductDetailsPage() {
 
     return { original, discounted };
   }
-  console.log("Config and lengthData", cfg);
+
   const prices = useMemo(() => {
     if (!lengthData || !type) {
       return { original: 0, discounted: 0 };
@@ -473,7 +496,56 @@ export default function ProductDetailsPage() {
       lengthData,
     });
   }, [cfg, type, lengthData]);
-  console.log("Rendered with prices", cfg);
+  const doorSubtitle = (() => {
+    if (!cfg.doorOption) return undefined;
+
+    const isTimber =
+      cfg.doorOption === "Single Timber Door" ||
+      cfg.doorOption === "Double Timber Door";
+
+    const isAluminium =
+      cfg.doorOption === "With aluminium single door with full height handle" ||
+      cfg.doorOption === "With aluminium double door with full height handle";
+
+    const isNoDoor = cfg.doorOption === "No Door";
+
+    if (isNoDoor) {
+      return "Door: No Door";
+    }
+
+    if (isTimber) {
+      const handleName = handleDesign.find(
+        (h: any) => h._id === cfg.handleDesign,
+      )?.name;
+
+      return [
+        `Door: ${cfg.doorOption}`,
+        handleName ? `Handle: ${handleName}` : null,
+        cfg.handleColor ? `Color: ${cfg.handleColor}` : null,
+      ]
+        .filter(Boolean)
+        .join("  |  ");
+    }
+
+    if (isAluminium) {
+      const finishingName = aluminium?.find(
+        (a: any) => a._id === cfg.aluminiumDoorFinishing,
+      )?.name;
+
+      return [
+        cfg.doorOption.includes("single")
+          ? "Door: Aluminium Single"
+          : "Door: Aluminium Double",
+        cfg.aluminiumFrameColor ? `Frame: ${cfg.aluminiumFrameColor}` : null,
+        finishingName ? `Finish: ${finishingName}` : null,
+      ]
+        .filter(Boolean)
+        .join("  |  ");
+    }
+
+    return cfg.doorOption;
+  })();
+
   return (
     <div
       className="min-h-screen w-full"
@@ -626,12 +698,15 @@ export default function ProductDetailsPage() {
                         <button
                           key={i}
                           className="aspect-square rounded-lg overflow-hidden border border-gray-100 hover:opacity-80 transition"
-                          onClick={() =>
-                            setZoomImg({
-                              url: imageUrl, // ✅ correct key-value
-                              alt: `Gallery ${i + 1}`,
-                            })
-                          }
+                          onClick={() => {
+                            const galleryImages = (works?.ListOfImg ?? []).map(
+                              (u: string, j: number) => ({
+                                url: u?.startsWith("http") ? u : `https:${u}`,
+                                alt: `Gallery ${j + 1}`,
+                              }),
+                            );
+                            setLightbox({ images: galleryImages, index: i });
+                          }}
                         >
                           <img
                             alt={`Gallery ${i + 1}`}
@@ -686,7 +761,7 @@ export default function ProductDetailsPage() {
                     onToggle={() => toggle("external-color")}
                   >
                     <SwatchRow>
-                      {colors?.map((c) => (
+                      {colors?.map((c: any) => (
                         <ColorSwatch
                           key={c._id}
                           name={c.colorDisplayName}
@@ -695,12 +770,15 @@ export default function ProductDetailsPage() {
                           imageUrl={`https:${c.sample}`}
                           selected={cfg.externalColor === c._id}
                           onSelect={() => set("externalColor")(c._id)}
-                          onViewImage={() =>
-                            setZoomImg({
-                              url: `https:${c.sample}`,
-                              alt: c.colorDisplayName,
-                            })
-                          }
+                          onViewImage={() => {
+                            const idx = colorImages.findIndex(
+                              (img) => img.id === c._id,
+                            );
+                            setLightbox({
+                              images: colorImages,
+                              index: idx >= 0 ? idx : 0,
+                            });
+                          }}
                         />
                       ))}
                     </SwatchRow>
@@ -813,7 +891,7 @@ export default function ProductDetailsPage() {
                     <Accordion
                       id="door"
                       title="Select Door"
-                      subtitle={cfg.doorOption ?? undefined}
+                      subtitle={doorSubtitle ?? undefined}
                       isOpen={openSection === "door"}
                       isComplete={complete["door"]}
                       onToggle={() => toggle("door")}
@@ -907,8 +985,10 @@ export default function ProductDetailsPage() {
                           </div>
                         )}
 
+                        {/* Handle Design Color — correct condition */}
                         {cfg.handleDesign &&
-                          cfg.doorOption === "Single Timber Door" && (
+                          (cfg.doorOption === "Single Timber Door" ||
+                            cfg.doorOption === "Double Timber Door") && (
                             <div>
                               <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">
                                 Handle Design Color
@@ -1031,17 +1111,44 @@ export default function ProductDetailsPage() {
                       isComplete={complete["ledStrip"]}
                       onToggle={() => toggle("led-strip")}
                     >
-                      <div className="grid grid-cols-2 gap-3">
-                        <Pill
-                          label="Yes"
-                          selected={cfg.ledStrip === "Yes"}
-                          onClick={() => set("ledStrip")("Yes")}
-                        />
-                        <Pill
-                          label="No"
-                          selected={cfg.ledStrip === "No"}
-                          onClick={() => set("ledStrip")("No")}
-                        />
+                      <div className="flex flex-col gap-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <Pill
+                            label="Yes"
+                            selected={cfg.ledStrip === "Yes"}
+                            onClick={() => set("ledStrip")("Yes")}
+                          />
+                          <Pill
+                            label="No"
+                            selected={cfg.ledStrip === "No"}
+                            onClick={() => set("ledStrip")("No")}
+                          />
+                        </div>
+                        {cfg.ledStrip && (
+                          <button
+                            className="self-start text-xs font-['Poppins'] font-medium px-3 py-1.5 rounded-lg border border-[#414042] text-[#414042] bg-[#f5f5f5] hover:bg-[#ebebeb] transition"
+                            onClick={() =>
+                              setLightbox({
+                                images: [
+                                  {
+                                    url:
+                                      cfg.ledStrip === "Yes"
+                                        ? "/images/yesLed.webp"
+                                        : "/images/noLed.webp",
+                                    alt:
+                                      cfg.ledStrip === "Yes"
+                                        ? "With LED Strip"
+                                        : "Without LED Strip",
+                                  },
+                                ],
+                                index: 0,
+                              })
+                            }
+                            type="button"
+                          >
+                            View Image
+                          </button>
+                        )}
                       </div>
                     </Accordion>
                   )}
@@ -1131,13 +1238,27 @@ export default function ProductDetailsPage() {
         </footer>
       </div>
 
-      {zoomImg && (
+      {/* {zoomImg && (
         <Lightbox
           url={zoomImg.url}
           alt={zoomImg.alt}
           onClose={() => setZoomImg(null)}
         />
+      )} */}
+
+      {lightbox && (
+        <Lightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          onIndexChange={(i) =>
+            setLightbox((prev) => (prev ? { ...prev, index: i } : null))
+          }
+          onClose={() => setLightbox(null)}
+          // Auto-select the last-viewed colour when closing a colour lightbox
+          onSelect={(id) => set("externalColor")(id)}
+        />
       )}
+
       {showCartModal && (
         <AddToCartModal
           roomName={selectedRoom}

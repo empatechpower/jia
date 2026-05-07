@@ -5,7 +5,7 @@ import type { KitchenInfo } from "@/types";
 const AREAS = [
   {
     id: "wardrobe",
-    label: "Wardrobe",
+    label: "JIA Wardrobe | Origin Daily Series",
     emoji: "🚪",
     image: "/images/wardrobe.png",
   },
@@ -103,7 +103,7 @@ export default function AreaSelectionPage() {
                 className="w-full h-[200px] lg:h-[280px] lg:object-contain object-cover rounded-t-2xl"
               />
               <div className="flex flex-col py-4 px-6">
-                <span className="font-['Poppins'] text-left font-semibold text-lg text-[#1C1B1F] group-hover:text-[#332e28]">
+                <span className="font-['Poppins'] text-left font-semibold text-[13px] text-[#1C1B1F] group-hover:text-[#332e28]">
                   {label}
                 </span>
               </div>

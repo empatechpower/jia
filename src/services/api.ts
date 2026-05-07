@@ -312,7 +312,7 @@ export const api = {
 
     /** POST /wf/forgot-password */
     forgotPassword: (email: string) =>
-      request<void>("POST", "/forgot-password", { email }),
+      request<void>("POST", "/forgetPassword", { email }),
   },
 
   // ── User ─────────────────────────────────────────────────────────────────
@@ -470,6 +470,8 @@ export const api = {
     //       { key: "project_id", constraint_type: "equals", value: projectId },
     //     ]),
     //   }),
+    delete: (roomId: string) =>
+      request<void>("POST", "/delete-room", { room_id: roomId }),
   },
 
   // ── Cart ──────────────────────────────────────────────────────────────────

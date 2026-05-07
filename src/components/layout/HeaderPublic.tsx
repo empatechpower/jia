@@ -25,7 +25,7 @@ export default function HeaderPublic({
   }
 
   return (
-    <header className="absolute top-0 left-0 w-full z-50">
+    <header className="fixed top-0 left-0 w-full z-50 bg-gradient-to-b from-black/100 to-black/0">
       <div className="relative h-[80px] md:h-[120px]">
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
@@ -54,7 +54,7 @@ export default function HeaderPublic({
               About Us
             </button>
             <button
-              className="bg-white/30 hover:bg-white/40 transition px-6 py-2 rounded-[20px] capitalize font-['Poppins'] font-medium text-base text-white"
+              className="bg-[#70685e] hover:bg-white/40 transition px-6 py-2 rounded-[20px] capitalize font-['Poppins'] font-medium text-base text-white"
               onClick={onLoginClick}
             >
               Log In / Sign Up

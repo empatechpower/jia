@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/hooks/useAuth";
 
-// ─── Icon helpers (inline SVG, no figma dependency) ──────────────────────────
+// ─── Icon helpers ─────────────────────────────────────────────────────────────
 
 function FieldIcon({ path }: { path: string }) {
   return (
@@ -27,7 +27,7 @@ const ICONS = {
     "M2 2.667l10.666 10.666-.94.94-1.74-1.74A7.21 7.21 0 0 1 8 13.333c-3.333 0-6.18-2.073-7.333-5.333a7.97 7.97 0 0 1 2.06-3.06L1.333 3.607 2 2.667zm6 2.666c1.84 0 3.333 1.493 3.333 3.334 0 .373-.06.733-.173 1.067L6.933 5.507c.333-.113.693-.174 1.067-.174zm5.333 2.667c-.44-1.24-1.187-2.333-2.14-3.18l.94-.94A9.33 9.33 0 0 1 15.333 8c-1.153 3.26-4 5.333-7.333 5.333-.88 0-1.727-.14-2.52-.4l1.14-1.14c.447.14.913.207 1.38.207 3.333 0 6.18-2.073 7.333-5.333z",
 };
 
-// ─── Reusable field ───────────────────────────────────────────────────────────
+// ─── Field ────────────────────────────────────────────────────────────────────
 
 interface FieldProps {
   label: string;
@@ -52,16 +52,13 @@ function Field({
 }: FieldProps) {
   const isPassword = type === "password";
   const [showPassword, setShowPassword] = useState(false);
-
   const inputType = isPassword ? (showPassword ? "text" : "password") : type;
 
   return (
     <div className="flex flex-col gap-2">
       <label className="font-['Poppins'] text-xs text-[#414042]">{label}</label>
-
       <div className="bg-[#ececec] rounded-lg flex items-center gap-2 px-4 py-3 md:py-4">
         <FieldIcon path={ICONS[icon]} />
-
         <input
           autoComplete={autoComplete}
           className="flex-1 bg-transparent font-['Poppins'] text-base text-[#242424] placeholder:text-[#c1c8cb] outline-none"
@@ -71,12 +68,10 @@ function Field({
           type={inputType}
           value={value}
         />
-
-        {/* Eye toggle */}
         {isPassword && (
           <button
             type="button"
-            onClick={() => setShowPassword((prev) => !prev)}
+            onClick={() => setShowPassword((v) => !v)}
             className="flex items-center justify-center"
           >
             <FieldIcon path={showPassword ? ICONS.eyeOff : ICONS.eye} />
@@ -86,6 +81,7 @@ function Field({
     </div>
   );
 }
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
@@ -99,18 +95,6 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
-  // function handleSubmit(e: FormEvent) {
-  //   e.preventDefault();
-  //   setError("");
-
-  //   if (!email || !password) {
-  //     setError("Please fill in all required fields.");
-  //     return;
-  //   }
-
-  //   // Auth stub — replace with real auth (Firebase, Supabase, etc.)
-  //   handleLogin(email);
-  // }
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -130,9 +114,10 @@ export default function LoginPage() {
       // error already handled in hook
     }
   }
+
   return (
     <div className="min-h-screen w-full flex">
-      {/* Left panel — decorative image */}
+      {/* Left panel */}
       <div
         aria-hidden="true"
         className="hidden lg:block lg:w-1/2 xl:w-3/5 bg-[#332e28] relative"
@@ -140,7 +125,7 @@ export default function LoginPage() {
         <img
           alt=""
           className="absolute inset-0 w-full h-full object-cover opacity-60"
-          src="/images/login-hero.jpg"
+          src="/images/authBG.png"
         />
         <div className="absolute inset-0 flex flex-col justify-end p-12">
           <h2 className="font-['Poppins'] font-bold text-4xl text-white mb-4">
@@ -152,7 +137,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel */}
       <div className="flex-1 flex flex-col justify-center px-6 py-12 md:px-12 lg:px-16 max-w-lg mx-auto lg:mx-0 lg:max-w-none w-full">
         {/* Close */}
         <button
@@ -175,7 +160,6 @@ export default function LoginPage() {
           </svg>
         </button>
 
-        {/* Heading */}
         <h1 className="font-['Poppins'] font-bold text-3xl md:text-4xl text-[#242424] mb-2">
           {isSignIn ? "Welcome Back" : "Create Account"}
         </h1>
@@ -246,6 +230,17 @@ export default function LoginPage() {
             value={password}
           />
 
+          {/* Forgot password — navigates to dedicated page */}
+          {isSignIn && (
+            <button
+              className="font-['Poppins'] text-sm text-[#414042] font-bold text-right hover:opacity-70 transition self-end"
+              onClick={() => setCurrentPage("forgotPassword")}
+              type="button"
+            >
+              Forgot Password?
+            </button>
+          )}
+
           {isSignIn && (
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
@@ -260,12 +255,6 @@ export default function LoginPage() {
             </label>
           )}
 
-          {!isSignIn && (
-            <p className="font-['Poppins'] text-sm text-[#414042]">
-              We'll send an OTP to your phone each time you log in.
-            </p>
-          )}
-
           {(error || authError) && (
             <p className="font-['Poppins'] text-sm text-red-600" role="alert">
               {error || authError}
@@ -273,8 +262,8 @@ export default function LoginPage() {
           )}
 
           <button
+            className="bg-[#414042] hover:bg-[#242424] active:scale-95 transition rounded-lg px-8 py-3 md:py-4 w-full font-['Roboto'] font-medium text-base text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#414042] disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={loading}
-            className="bg-[#414042] hover:bg-[#242424] active:scale-95 transition rounded-lg px-8 py-3 md:py-4 w-full font-['Roboto'] font-medium text-base text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#414042]"
             type="submit"
           >
             {loading

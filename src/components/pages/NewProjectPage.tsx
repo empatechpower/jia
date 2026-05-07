@@ -98,7 +98,7 @@ export default function NewProjectPage() {
         setProject(project);
         setFormData({
           propertyType: project.Property_Type_Text || "BTO",
-          ownership: project.propertyOwner ?? "",
+          ownership: project.propertyOwner ?? "own",
           zipCode: project.postalCode || "",
           unit: project.unit || "",
           numRooms: project.roomNumber?.toString() || "",
@@ -224,6 +224,11 @@ export default function NewProjectPage() {
 
     if (file) {
       setFloorplanUrl(""); // clear old Cloudinary URL
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.floorPlan;
+        return newErrors;
+      });
     }
   }
   const formatDate = (value: number | string) => {
@@ -309,8 +314,8 @@ export default function NewProjectPage() {
             </legend>
             <div className="flex gap-2">
               {[
-                { label: "Own Property", value: "Own Property" },
-                { label: "Rented Property", value: "Rented Property" },
+                { label: "Own Property", value: "own" },
+                { label: "Rented Property", value: "rented" },
               ].map(({ label, value }) => (
                 <button
                   key={label}
@@ -332,7 +337,7 @@ export default function NewProjectPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="font-['Poppins'] text-sm text-[#414042] block mb-1">
-                Postal Code
+                Home zip Code
               </label>
               <input
                 autoComplete="postal-code"
@@ -352,7 +357,7 @@ export default function NewProjectPage() {
             </div>
             <div>
               <label className="font-['Poppins'] text-sm text-[#414042] block mb-1">
-                Unit Number
+                Home Unit
               </label>
               <input
                 className={`w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28] ${
@@ -392,7 +397,7 @@ export default function NewProjectPage() {
           {/* Key date */}
           <div>
             <label className="font-['Poppins'] text-sm text-[#414042] block mb-1">
-              Expected Key Collection Date
+              Key Collection Date (Optional)
             </label>
             <input
               className="w-full bg-[#ececec] rounded-lg px-4 py-3 font-['Poppins'] text-base outline-none focus:ring-2 focus:ring-[#332e28]"
@@ -444,6 +449,9 @@ export default function NewProjectPage() {
                 onChange={handleFileChange}
               />
             </label>
+            {errors.floorPlan && (
+              <p className="text-red-500 text-xs mt-1">{errors.floorPlan}</p>
+            )}
           </div>
 
           {/* Submit */}

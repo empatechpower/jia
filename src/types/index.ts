@@ -19,7 +19,8 @@ export type Page =
   | "terms"
   | "privacy"
   | "profile"
-  | "admin";
+  | "admin"
+  | "forgotPassword";
 
 // ─── Domain Models ───────────────────────────────────────────────────────────
 

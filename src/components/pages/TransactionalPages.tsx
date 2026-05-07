@@ -780,7 +780,73 @@ interface RoomSectionProps {
   onDeleteRoom: (roomId: string) => void;
   onDeleteProduct: (roomId: string, productId: string) => void;
 }
+function DeleteItemModal({
+  productName,
+  onConfirm,
+  onCancel,
+}: {
+  productName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+      onClick={onCancel}
+      role="dialog"
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+          <svg
+            className="w-6 h-6 text-red-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
+          </svg>
+        </div>
 
+        <div className="text-center">
+          <h3 className="font-['Poppins'] font-bold text-lg text-[#1C1B1F]">
+            Remove Product?
+          </h3>
+          <p className="font-['Poppins'] text-sm text-[#666] mt-1">
+            Are you sure you want to remove{" "}
+            <span className="font-semibold text-[#1C1B1F]">
+              Type {productName}
+            </span>{" "}
+            from your cart?
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2 pt-1">
+          <button
+            className="w-full bg-red-500 hover:bg-red-600 active:scale-95 transition py-3 rounded-xl font-['Poppins'] font-semibold text-base text-white"
+            onClick={onConfirm}
+          >
+            Yes, Remove
+          </button>
+          <button
+            className="w-full border border-gray-200 hover:bg-gray-50 transition py-3 rounded-xl font-['Poppins'] text-base text-[#414042]"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function ProductCard({
   product,
   onDelete,
@@ -794,7 +860,7 @@ function ProductCard({
   const config = (product ?? {}) as Record<string, any>;
   const configEntries = formatConfig(config);
   const widthMm = product?.pricing?.length ?? null;
-
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       <div className="flex items-center gap-3 p-3">
@@ -816,7 +882,7 @@ function ProductCard({
         <button
           aria-label={`Remove ${product?.name}`}
           className="shrink-0 p-2 text-red-400 hover:text-red-600 transition"
-          onClick={onDelete}
+          onClick={() => setShowDeleteModal(true)}
         >
           <TrashIcon className="w-5 h-5" />
         </button>
@@ -838,10 +904,85 @@ function ProductCard({
           )}
         </div>
       )}
+      {showDeleteModal && (
+        <DeleteItemModal
+          productName={product?.code ?? product?.name}
+          onConfirm={() => {
+            setShowDeleteModal(false);
+            onDelete();
+          }}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      )}
     </div>
   );
 }
+function DeleteRoomModal({
+  roomName,
+  onConfirm,
+  onCancel,
+}: {
+  roomName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+      aria-modal="true"
+      role="dialog"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Icon */}
+        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+          <svg
+            className="w-6 h-6 text-red-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
+          </svg>
+        </div>
 
+        <div className="text-center">
+          <h3 className="font-['Poppins'] font-bold text-lg text-[#1C1B1F]">
+            Delete Room?
+          </h3>
+          <p className="font-['Poppins'] text-sm text-[#666] mt-1">
+            Are you sure you want to delete{" "}
+            <span className="font-semibold text-[#1C1B1F]">{roomName}</span> and
+            all its products? This cannot be undone.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2 pt-1">
+          <button
+            className="w-full bg-red-500 hover:bg-red-600 active:scale-95 transition py-3 rounded-xl font-['Poppins'] font-semibold text-base text-white"
+            onClick={onConfirm}
+          >
+            Yes, Delete Room
+          </button>
+          <button
+            className="w-full border border-gray-200 hover:bg-gray-50 transition py-3 rounded-xl font-['Poppins'] text-base text-[#414042]"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function RoomSection({
   room,
   onDeleteRoom,
@@ -852,6 +993,7 @@ function RoomSection({
     src: string;
     alt: string;
   } | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   return (
     <section className="border-b border-gray-200 pb-6">
       <div className="flex items-center justify-between py-3">
@@ -862,7 +1004,7 @@ function RoomSection({
           <button
             aria-label={`Delete ${room.name}`}
             className="p-1.5 text-red-400 hover:text-red-600 transition"
-            onClick={() => onDeleteRoom(room?._id)}
+            onClick={() => setShowDeleteModal(true)}
           >
             <TrashIcon className="w-5 h-5" />
           </button>
@@ -952,6 +1094,16 @@ function RoomSection({
           onClose={() => setModalImage(null)}
         />
       )}
+      {showDeleteModal && (
+        <DeleteRoomModal
+          roomName={room.name}
+          onConfirm={() => {
+            setShowDeleteModal(false);
+            onDeleteRoom(room._id);
+          }}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      )}
     </section>
   );
 }
@@ -1036,10 +1188,25 @@ export function ShoppingCartPage() {
   );
 
   const handleDeleteRoom = useCallback(
-    (roomId: string) => {
-      const room = cartItems.find((r) => r._id === roomId);
-      if (!room) return;
-      room.products.forEach((p) => handleDeleteProduct(roomId, p._id));
+    async (roomId: string) => {
+      try {
+        // 1. Delete every cart item in this room from Bubble
+        const room = cartItems.find((r) => r._id === roomId);
+        if (room) {
+          await Promise.all(room.products.map((p) => api.cart.remove(p._id)));
+        }
+
+        // 2. Delete the room record itself from Bubble
+        await api.rooms.delete(roomId);
+
+        // 3. Update local state — remove all products then the room
+        room?.products.forEach((p) => handleDeleteProduct(roomId, p._id));
+
+        // 4. Remove the room from cartRoom local state
+        setCartRoom((prev: any[]) => prev.filter((r: any) => r._id !== roomId));
+      } catch (err) {
+        console.error("Failed to delete room:", err);
+      }
     },
     [cartItems, handleDeleteProduct],
   );
@@ -1271,7 +1438,6 @@ interface CheckoutFormState {
   homeZipCode: string;
   homeUnit: string;
   keyDate: string;
-  deliveryAddressDifferent: boolean;
   paymentMethod: "card" | "paynow";
   agreedToTerms: boolean;
 }
@@ -1348,7 +1514,7 @@ export function CheckoutPage() {
     homeZipCode: "",
     homeUnit: "",
     keyDate: "",
-    deliveryAddressDifferent: false,
+
     paymentMethod: "card",
     agreedToTerms: false,
   });
@@ -1414,7 +1580,8 @@ export function CheckoutPage() {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) &&
     form.phone.trim().length >= 7 &&
     form.agreedToTerms &&
-    (!form.deliveryAddressDifferent ||
+    form.siteVisitAcknowledged && form.installationDate &&
+    (!form.deliverySameAsProperty ||
       form.deliveryPostalCode.trim().length > 0) &&
     form.homeZipCode.trim().length > 0 &&
     form.homeUnit.trim().length > 0;
@@ -1427,7 +1594,7 @@ export function CheckoutPage() {
     const length = p?.pricing?.length;
     return isSmallWidth.includes(length) ? t.sketchSmall : t.sketchBig;
   }
-  console.log("cartRoom", cartRoom);
+
   const roomsForUI = cartRoom
     .map((room: any) => {
       const products = (room.items ?? [])
@@ -1487,9 +1654,27 @@ export function CheckoutPage() {
 
   const handleCheckoutAndPayment = async () => {
     try {
+        const payload = {
+      fullName:               form.fullName,
+      email:                  form.email,
+      phone:                  form.phone,
+      installationDate:       form.installationDate,
+      siteVisitAcknowledged:  form.siteVisitAcknowledged,
+      deliverySameAsProperty: form.deliverySameAsProperty,
+      deliveryPostalCode:     form.deliveryPostalCode,
+      ownership:              form.ownership,
+      homeZipCode:            form.homeZipCode,
+      homeUnit:               form.homeUnit,
+      paymentMethod:          form.paymentMethod,
+
+      // Optional — only included when they have a value
+      ...(form.deliveryUnit?.trim() ? { deliveryUnit: form.deliveryUnit } : {}),
+      ...(form.keyDate?.trim()      ? { keyDate: form.keyDate }           : {}),
+    };
+
       const checkoutRes = await api.projects.submitCheckout(
         currentProject?._id,
-        form,
+        payload,
       );
       const orderId = checkoutRes?.response?.results._id;
       if (!orderId) throw new Error("No order_id returned from checkout");
@@ -1604,38 +1789,6 @@ export function CheckoutPage() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Delivery Address">
-              <div className="space-y-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    checked={form.deliverySameAsProperty}
-                    className="w-4 h-4 rounded border-gray-300 accent-[#1C1B1F]"
-                    onChange={(e) =>
-                      set("deliverySameAsProperty", e.target.checked)
-                    }
-                    type="checkbox"
-                  />
-                  <span className="font-['Poppins'] text-sm text-[#1C1B1F]">
-                    Same as Property Address
-                  </span>
-                </label>
-                {!form.deliverySameAsProperty && (
-                  <>
-                    <FormInput
-                      label="Postal Code"
-                      value={form.deliveryPostalCode}
-                      onChange={(v) => set("deliveryPostalCode", v)}
-                    />
-                    <FormInput
-                      label="Unit (Optional)"
-                      value={form.deliveryUnit}
-                      onChange={(v) => set("deliveryUnit", v)}
-                    />
-                  </>
-                )}
-              </div>
-            </SectionCard>
-
             <SectionCard title="Property Information">
               <div className="space-y-4">
                 <div>
@@ -1671,19 +1824,7 @@ export function CheckoutPage() {
                   onChange={(v) => set("homeUnit", v)}
                   placeholder="e.g. 3456"
                 />
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    checked={form.deliveryAddressDifferent}
-                    className="w-4 h-4 rounded border-gray-300 accent-[#1C1B1F]"
-                    onChange={(e) =>
-                      set("deliveryAddressDifferent", e.target.checked)
-                    }
-                    type="checkbox"
-                  />
-                  <span className="font-['Poppins'] text-sm text-[#1C1B1F]">
-                    The delivery address is different home address
-                  </span>
-                </label>
+
                 <div>
                   <label className="block font-['Poppins'] font-medium text-sm text-[#1C1B1F] mb-1.5">
                     Key Collection Date{" "}
@@ -1700,6 +1841,37 @@ export function CheckoutPage() {
               </div>
             </SectionCard>
 
+            <SectionCard title="Delivery Address">
+              <div className="space-y-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    checked={form.deliverySameAsProperty}
+                    className="w-4 h-4 rounded border-gray-300 accent-[#1C1B1F]"
+                    onChange={(e) =>
+                      set("deliverySameAsProperty", e.target.checked)
+                    }
+                    type="checkbox"
+                  />
+                  <span className="font-['Poppins'] text-sm text-[#1C1B1F]">
+                    Same as Property Address
+                  </span>
+                </label>
+                {!form.deliverySameAsProperty && (
+                  <>
+                    <FormInput
+                      label="Postal Code"
+                      value={form.deliveryPostalCode}
+                      onChange={(v) => set("deliveryPostalCode", v)}
+                    />
+                    <FormInput
+                      label="Unit (Optional)"
+                      value={form.deliveryUnit}
+                      onChange={(v) => set("deliveryUnit", v)}
+                    />
+                  </>
+                )}
+              </div>
+            </SectionCard>
             <SectionCard title="Payment Method">
               <p className="font-['Poppins'] text-xs text-[#888] mb-4">
                 Secure payment powered by HitPay

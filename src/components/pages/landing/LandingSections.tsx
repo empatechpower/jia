@@ -12,7 +12,7 @@ const IMG = {
   modernKitchen: "/images/works/modern-kitchen.jpg",
   modernLivingRoom: "/images/works/modern-living-room.jpg",
   bathroomRenovation: "/images/works/bathroom-renovation.jpg",
-  ctaBg: "/images/cta-background.jpg",
+  ctaBg: "/images/newBG.png",
 };
 
 // ─── Services ────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ export function ServicesSection({
   return (
     <section
       aria-label="Our Services"
-      className="bg-[#faf4e6] py-12 md:py-16 lg:py-[42px] px-4 md:px-8 lg:px-[76px]"
+      className="bg-[#faf4e6] py-12 md:py-16 lg:py-[42px] px-4 md:px-8 lg:px-[76px] "
       id="services"
     >
       <div className="max-w-[1280px] mx-auto">
@@ -257,10 +257,10 @@ export function CTASection({ onStartProject }: CTASectionProps) {
   return (
     <section
       aria-label="Call to action"
-      className="py-12 md:py-16 lg:py-[42px] px-4 md:px-8 lg:px-[76px]"
+      className="py-12 md:py-16 lg:py-[42px] "
     >
-      <div className="max-w-[1280px] mx-auto">
-        <div className="relative h-[250px] md:h-[310px] overflow-hidden rounded-lg">
+      <div className=" mx-auto">
+        <div className="relative h-[250px] md:h-[310px] overflow-hidden">
           <img
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
@@ -290,20 +290,40 @@ export function CTASection({ onStartProject }: CTASectionProps) {
 
 const FAQ_ITEMS = [
   {
-    q: "What services do you offer?",
-    a: "We offer complete design and renovation services including carpentry, electrical work, painting, plumbing, tiling, and demolition.",
+    q: "⁠What types of carpentry services does Jia Ideas offer for HDB flats?",
+    a: "At Jia Ideas, we specialize in custom carpentry for HDB homes in Singapore—from kitchen cabinets and wardrobes to feature walls and study desks. Whether you're a BTO homeowner or renovating a resale flat, our designs are affordable, functional, and tailored to your layout.",
   },
   {
-    q: "How long does a typical project take?",
-    a: "Project timelines vary depending on the scope of work. A typical renovation can take anywhere from 4–12 weeks.",
+    q: "Why is custom carpentry important for HDB homeowners?",
+    a: "HDB flats come in standard layouts, so custom carpentry ensures that your furniture fits perfectly—maximizing storage and usability. Plus, it lets you reflect your personal style while staying within budget.",
   },
   {
-    q: "Do you provide warranties?",
-    a: "Yes, we provide comprehensive warranties on all our work to ensure your peace of mind.",
+    q: "⁠Is Jia Ideas affordable for first-time homeowners and BTO flats?",
+    a: "Absolutely. We understand that new homeowners in Singapore are often budget-conscious. That’s why our carpentry solutions are modular, cost-effective, and easy to maintain—perfect for young couples or first-time buyers.",
   },
   {
-    q: "Can I customise my design?",
-    a: "Absolutely! We work closely with you to create a design that matches your vision and requirements.",
+    q: "⁠Do you provide carpentry installation services?",
+    a: "Yes! We provide end-to-end installation services in Singapore. From site measurement to final fitting, our experienced team ensures a smooth and clean installation for your new HDB home.",
+  },
+  {
+    q: "⁠How long does carpentry installation for an HDB usually take?",
+    a: "Most HDB carpentry installations take between 5 to 10 working days, depending on the project scope. We always aim to deliver on time without compromising on quality.",
+  },
+  {
+    q: "Can I customize my carpentry design based on my lifestyle?",
+    a: "Of course! We work closely with you to understand your storage needs, layout preferences, and design goals. Whether you need a minimalist kitchen, a hidden wardrobe, or a work-from-home setup, we’ll make it happen.",
+  },
+  {
+    q: "What makes Jia Ideas different from other carpentry services in Singapore?",
+    a: "We focus on HDB-specific carpentry solutions that are stylish, space-saving, and designed for small homes. Plus, we offer transparent pricing, quality workmanship, and fast installation—all tailored to Singaporean homeowners.",
+  },
+  {
+    q: "Can I view samples or past HDB projects?",
+    a: "Yes, you can view our portfolio of completed HDB carpentry projects on our website at jiaideas.com. It’s a great way to get ideas for your own home!",
+  },
+  {
+    q: "How do I get a quote for my HDB carpentry needs?",
+    a: "Getting a quote is easy! Simply select the carpentry items you need from our website, or click the WebApp button to chat with our customer service team. We’ll guide you step-by-step and help recommend the best solutions for your HDB flat—whether it’s a new BTO or a resale unit.",
   },
 ];
 
