@@ -313,14 +313,17 @@ export const api = {
     /** POST /wf/forgot-password */
     forgotPassword: (email: string) =>
       request<void>("POST", "/forgetPassword", { email }),
+    changePassword: (payload: {
+      currentPassword: string;
+      newPassword: string;
+    }) => request<void>("POST", "/change-password", payload),
   },
 
   // ── User ─────────────────────────────────────────────────────────────────
 
   user: {
     /** GET /obj/user/:id */
-    me: (userId: string) =>
-      dataGet<{ response: any }>(`/get_current_user?id=${userId}`),
+    me: () => dataGet<{ response: any }>(`/get_current_user`),
     profile: () => dataGet<{ response: any }>(`/get_user`),
 
     /** PATCH /wf/update-profile */

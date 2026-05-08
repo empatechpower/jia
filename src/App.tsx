@@ -29,7 +29,7 @@ const ProductSelectionPage = lazy(
 const ProductDetailsPage = lazy(
   () => import("@/components/pages/flow/ProductDetailsPage"),
 );
-
+const ProfilePage = lazy(() => import("@/components/pages/ProfilePage"));
 // AdminPage with graceful fallback when the file isn't yet present
 const AdminPage = () => (
   <div className="min-h-screen flex items-center justify-center font-['Poppins'] text-[#666]">
@@ -67,10 +67,7 @@ const CheckoutPage = lazyNamed(
   () => import("@/components/pages/TransactionalPages"),
   "CheckoutPage",
 );
-const ProfilePage = lazyNamed(
-  () => import("@/components/pages/TransactionalPages"),
-  "ProfilePage",
-);
+
 const TermsAndConditionsPage = lazyNamed(
   () => import("@/components/pages/LegalPages"),
   "TermsAndConditionsPage",

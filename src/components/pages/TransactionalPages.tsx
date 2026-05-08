@@ -1580,7 +1580,8 @@ export function CheckoutPage() {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) &&
     form.phone.trim().length >= 7 &&
     form.agreedToTerms &&
-    form.siteVisitAcknowledged && form.installationDate &&
+    form.siteVisitAcknowledged &&
+    form.installationDate &&
     (!form.deliverySameAsProperty ||
       form.deliveryPostalCode.trim().length > 0) &&
     form.homeZipCode.trim().length > 0 &&
@@ -1654,23 +1655,25 @@ export function CheckoutPage() {
 
   const handleCheckoutAndPayment = async () => {
     try {
-        const payload = {
-      fullName:               form.fullName,
-      email:                  form.email,
-      phone:                  form.phone,
-      installationDate:       form.installationDate,
-      siteVisitAcknowledged:  form.siteVisitAcknowledged,
-      deliverySameAsProperty: form.deliverySameAsProperty,
-      deliveryPostalCode:     form.deliveryPostalCode,
-      ownership:              form.ownership,
-      homeZipCode:            form.homeZipCode,
-      homeUnit:               form.homeUnit,
-      paymentMethod:          form.paymentMethod,
+      const payload = {
+        fullName: form.fullName,
+        email: form.email,
+        phone: form.phone,
+        installationDate: form.installationDate,
+        siteVisitAcknowledged: form.siteVisitAcknowledged,
+        deliverySameAsProperty: form.deliverySameAsProperty,
+        deliveryPostalCode: form.deliveryPostalCode,
+        ownership: form.ownership,
+        homeZipCode: form.homeZipCode,
+        homeUnit: form.homeUnit,
+        paymentMethod: form.paymentMethod,
 
-      // Optional — only included when they have a value
-      ...(form.deliveryUnit?.trim() ? { deliveryUnit: form.deliveryUnit } : {}),
-      ...(form.keyDate?.trim()      ? { keyDate: form.keyDate }           : {}),
-    };
+        // Optional — only included when they have a value
+        ...(form.deliveryUnit?.trim()
+          ? { deliveryUnit: form.deliveryUnit }
+          : {}),
+        ...(form.keyDate?.trim() ? { keyDate: form.keyDate } : {}),
+      };
 
       const checkoutRes = await api.projects.submitCheckout(
         currentProject?._id,
@@ -2087,76 +2090,6 @@ export function CheckoutPage() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── PROFILE PAGE ─────────────────────────────────────────────────────────────
-
-export function ProfilePage() {
-  const { userEmail, setCurrentPage, previousPage, handleLogout } = useApp();
-  return (
-    <div className="min-h-screen bg-white">
-      <header className="bg-[#332e28] px-4 md:px-8 lg:px-[76px] py-4 flex items-center justify-between">
-        <button
-          className="flex items-center gap-2 text-white hover:opacity-70 transition"
-          onClick={() => setCurrentPage(previousPage)}
-        >
-          <BackIcon />
-          <span className="font-['Poppins'] text-sm">Back</span>
-        </button>
-        <h1 className="font-['Poppins'] font-semibold text-white text-base">
-          My Profile
-        </h1>
-        <button
-          className="font-['Poppins'] text-sm text-white/70 hover:text-white transition"
-          onClick={handleLogout}
-        >
-          Log Out
-        </button>
-      </header>
-      <main className="max-w-xl mx-auto px-4 md:px-8 py-10">
-        <div className="bg-[#faf4e6] rounded-2xl p-8 flex flex-col items-center gap-4 mb-8">
-          <div className="w-20 h-20 rounded-full bg-[#332e28] flex items-center justify-center">
-            <svg className="w-10 h-10" fill="white" viewBox="0 0 24 24">
-              <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" />
-            </svg>
-          </div>
-          <p className="font-['Poppins'] font-semibold text-[#1C1B1F] text-lg">
-            {userEmail}
-          </p>
-        </div>
-        <nav className="space-y-2">
-          {[
-            { label: "My Orders", icon: "📦" },
-            { label: "My Projects", icon: "🏠" },
-            { label: "Settings", icon: "⚙️" },
-          ].map(({ label, icon }) => (
-            <button
-              key={label}
-              className="w-full flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-[#332e28] transition text-left"
-            >
-              <span className="text-xl">{icon}</span>
-              <span className="font-['Poppins'] text-base text-[#1C1B1F]">
-                {label}
-              </span>
-              <svg
-                className="w-5 h-5 ml-auto text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M9 18l6-6-6-6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                />
-              </svg>
-            </button>
-          ))}
-        </nav>
-      </main>
     </div>
   );
 }
