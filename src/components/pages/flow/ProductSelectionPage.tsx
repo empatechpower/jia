@@ -97,7 +97,7 @@ export default function ProductSelectionPage() {
             No products available for this series yet.
           </p>
         ) : (
-          <ul className="grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-4">
+          <ul className="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-2 gap-4">
             {type?.map(
               ({
                 _id,

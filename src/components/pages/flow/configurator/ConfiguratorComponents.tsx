@@ -160,7 +160,7 @@ export function ColorSwatch({
     <div
       className={`flex-shrink-0 flex justify-between flex-col items-center rounded-lg border-2 overflow-hidden transition cursor-pointer ${
         selected
-          ? "border-[#414042]"
+          ? "border-[#414042] border-[4px]"
           : "border-[#e0e0e0] hover:border-[#b0b0b0]"
       }`}
       style={{ width: 160 }}
@@ -221,7 +221,7 @@ export function ImageSwatch({
     <button
       className={`flex-shrink-0 flex flex-col items-center rounded-lg border-2 overflow-hidden transition ${
         selected
-          ? "border-[#414042] bg-[#f5f5f5] shadow-md"
+          ? "border-[#414042] bg-[#f5f5f5] shadow-md border-[4px]"
           : "border-[#e0e0e0] bg-white hover:border-[#b0b0b0]"
       }`}
       onClick={onSelect}

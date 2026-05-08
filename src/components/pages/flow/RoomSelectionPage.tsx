@@ -41,23 +41,23 @@ function PencilIcon() {
   );
 }
 
-// function TrashIcon() {
-//   return (
-//     <svg
-//       className="w-4 h-4"
-//       fill="none"
-//       stroke="currentColor"
-//       viewBox="0 0 24 24"
-//     >
-//       <path
-//         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-//         strokeLinecap="round"
-//         strokeLinejoin="round"
-//         strokeWidth={1.8}
-//       />
-//     </svg>
-//   );
-// }
+function TrashIcon() {
+  return (
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+      />
+    </svg>
+  );
+}
 
 function PlusIcon() {
   return (
@@ -119,13 +119,13 @@ function RoomCard({
   room,
   onSelect,
   onRename,
-  // onDelete,
+  onDelete,
   productCount,
 }: {
   room: any;
   onSelect: () => void;
   onRename: (newName: string) => void;
-  // onDelete: () => void;
+  onDelete: () => void;
   productCount: number;
 }) {
   const [editing, setEditing] = useState(false);
@@ -175,14 +175,17 @@ function RoomCard({
         >
           <PencilIcon />
         </button>
-        {/* <button
+        <button
           aria-label={`Delete ${room.name}`}
           className="p-1.5 text-gray-400 hover:text-red-500 transition rounded-lg hover:bg-red-50"
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
           type="button"
         >
           <TrashIcon />
-        </button> */}
+        </button>
       </div>
     </div>
   );
@@ -286,32 +289,45 @@ export default function RoomSelectionPage() {
   // ── Rename room ─────────────────────────────────────────────────────────────
   // Calls api.rooms.rename — you will wire this endpoint
   async function handleRenameRoom(roomId: string, newName: string) {
+    const trimmed = newName.trim();
+
+    // Check for duplicate name among other rooms
+    const isDuplicate = rooms.some(
+      (r) => r._id !== roomId && r.name.toLowerCase() === trimmed.toLowerCase(),
+    );
+
+    if (isDuplicate) {
+      alert(
+        `A room named "${trimmed}" already exists. Please choose a different name.`,
+      );
+      return;
+    }
+
     try {
-      await api.rooms.rename(roomId, newName);
+      await api.rooms.rename(roomId, trimmed);
       setRooms((prev) =>
-        prev.map((r) => (r._id === roomId ? { ...r, name: newName } : r)),
+        prev.map((r) => (r._id === roomId ? { ...r, name: trimmed } : r)),
       );
     } catch (err) {
       console.error(err);
-      // Optimistic: still update locally so UX is instant
       setRooms((prev) =>
-        prev.map((r) => (r._id === roomId ? { ...r, name: newName } : r)),
+        prev.map((r) => (r._id === roomId ? { ...r, name: trimmed } : r)),
       );
     }
   }
 
   // ── Delete room ─────────────────────────────────────────────────────────────
   // Calls api.rooms.delete — you will wire this endpoint
-  // async function handleDeleteRoom(roomId?: string) {
-  //   try {
-  //     await api.rooms.delete(roomId);
-  //     setRooms((prev) => prev.filter((r) => r._id !== roomId));
-  //   } catch (err) {
-  //     console.error(err);
-  //     // Optimistic: still remove locally
-  //     setRooms((prev) => prev.filter((r) => r._id !== roomId));
-  //   }
-  // }
+  async function handleDeleteRoom(roomId?: string) {
+    try {
+      await api.rooms.delete(roomId ?? "");
+      setRooms((prev) => prev.filter((r) => r._id !== roomId));
+    } catch (err) {
+      console.error(err);
+      // Optimistic: still remove locally
+      setRooms((prev) => prev.filter((r) => r._id !== roomId));
+    }
+  }
 
   // ── Derive cart counts per room ─────────────────────────────────────────────
   function getProductCount(roomId: string) {
@@ -436,7 +452,7 @@ export default function RoomSelectionPage() {
                 productCount={getProductCount(room._id)}
                 onSelect={() => handleSelectRoom(room._id, room.name)}
                 onRename={(name) => handleRenameRoom(room._id, name)}
-                // onDelete={() => handleDeleteRoom(room._id)}
+                onDelete={() => handleDeleteRoom(room._id)}
               />
             ))}
           </div>

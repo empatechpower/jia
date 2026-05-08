@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useApp } from "@/context/AppContext";
 import type { CartRoom, ProductConfig } from "@/types";
 import { api } from "@/services/api";
@@ -458,7 +458,7 @@ function OrderDetailsPage({
         id: room._id,
         name: room.name,
         products,
-        sketchImages: typesUsed
+        sketchImages: products
           .map((t: any) =>
             getSketchImage(
               t,
@@ -466,7 +466,7 @@ function OrderDetailsPage({
             ),
           )
           .filter(Boolean),
-        renderImages: typesUsed
+        renderImages: products
           .map((t: any) =>
             getRenderImage(
               t,
@@ -774,6 +774,23 @@ function OrderDetailsPage({
 }
 
 // ─── SHOPPING CART PAGE ───────────────────────────────────────────────────────
+const CONFIG_ORDER = [
+  "Internal color",
+  "External color",
+  "Width",
+  "Door Type",
+  "Door Opens",
+  "Side Panel",
+  "Drawer Lock",
+  "Number of Lock",
+  "Handle Design",
+  "Handle Color",
+  "Aluminium Frame Color",
+  "Door Finishing",
+  "LED Light",
+  "Blum Runner",
+  "Remarks",
+];
 
 interface RoomSectionProps {
   room: CartRoom;
@@ -861,6 +878,14 @@ function ProductCard({
   const configEntries = formatConfig(config);
   const widthMm = product?.pricing?.length ?? null;
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const sortedEntries = [...configEntries].sort((a, b) => {
+    const ai = CONFIG_ORDER.indexOf(a.label);
+    const bi = CONFIG_ORDER.indexOf(b.label);
+    // Unknown labels go to the end
+    const aPos = ai === -1 ? CONFIG_ORDER.length : ai;
+    const bPos = bi === -1 ? CONFIG_ORDER.length : bi;
+    return aPos - bPos;
+  });
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       <div className="flex items-center gap-3 p-3">
@@ -890,7 +915,7 @@ function ProductCard({
 
       {configEntries.length > 0 && (
         <div className="px-3 pb-3 border-t border-gray-100 pt-2 grid grid-cols-1 gap-0.5">
-          {configEntries.map(({ label, value }) => (
+          {sortedEntries.map(({ label, value }) => (
             <p key={label} className="font-['Poppins'] text-xs text-[#555]">
               <span className="capitalize">{label}</span>:{"  "}
               {value}
@@ -994,6 +1019,54 @@ function RoomSection({
     alt: string;
   } | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [products, setProducts] = useState(room.products); // ← local order state
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  const dragIndex = useRef<number | null>(null);
+  useEffect(() => {
+    setProducts(room.products);
+  }, [room._id]);
+
+  function handleDragStart(index: number) {
+    dragIndex.current = index;
+  }
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault(); // allow drop
+    if (dragIndex.current === null || dragIndex.current === index) return;
+
+    // Reorder locally while dragging
+    setProducts((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(dragIndex.current!, 1);
+      next.splice(index, 0, moved);
+      dragIndex.current = index; // update so continuous drag works
+      return next;
+    });
+  }
+  function handleDrop() {
+    if (dragIndex.current === null) return;
+
+    if (dragOver !== null && dragIndex.current !== dragOver) {
+      setProducts((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(dragIndex.current!, 1);
+        next.splice(dragOver, 0, moved);
+
+        // Persist to Bubble
+        const newIds = next.map((p) => p._id);
+        // api.rooms.reorderProducts(room._id, newIds).catch(console.error);
+
+        return next;
+      });
+    }
+
+    dragIndex.current = null;
+    setDragOver(null);
+  }
+
+  function handleDragEnd() {
+    dragIndex.current = null;
+    setDragOver(null);
+  }
   return (
     <section className="border-b border-gray-200 pb-6">
       <div className="flex items-center justify-between py-3">
@@ -1025,14 +1098,14 @@ function RoomSection({
               <p className="font-['Poppins'] text-sm text-[#555] mb-2">
                 Sketch
               </p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex  overflow-x-auto pb-1">
                 {room?.sketchImages.map((src, i) => (
                   <button
                     key={i}
                     onClick={() =>
                       setModalImage({ src, alt: `Sketch ${i + 1}` })
                     }
-                    className="shrink-0 w-[80px] h-[110px] rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
+                    className="shrink-0  h-[110px] rounded-lg overflow-hidden "
                   >
                     <img
                       alt={`Sketch ${i + 1}`}
@@ -1049,14 +1122,14 @@ function RoomSection({
               <p className="font-['Poppins'] text-sm text-[#555] mb-2">
                 3D Render
               </p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex overflow-x-auto pb-1">
                 {room?.renderImages.map((src, i) => (
                   <button
                     key={i}
                     onClick={() =>
                       setModalImage({ src, alt: `3D Render ${i + 1}` })
                     }
-                    className="shrink-0 w-[80px] h-[110px] rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
+                    className="shrink-0  h-[110px] overflow-hidden "
                   >
                     <img
                       alt={`Render ${i + 1}`}
@@ -1072,15 +1145,24 @@ function RoomSection({
             <p className="font-['Poppins'] text-sm text-[#555] mb-2">
               Products (Drag to rearrange):
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {room?.products.map((product) => (
-                <ProductCard
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {products.map((product, index) => (
+                <div
                   key={product._id}
-                  product={product}
-                  roomId={room?._id}
-                  sketch={room?.sketchImages[0]}
-                  onDelete={() => onDeleteProduct(room?._id, product?._id)}
-                />
+                  className="shrink-0 w-[280px] cursor-grab active:cursor-grabbing"
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop()}
+                  onDragEnd={handleDragEnd}
+                >
+                  <ProductCard
+                    product={product}
+                    roomId={room?._id}
+                    sketch={room?.sketchImages[0]}
+                    onDelete={() => onDeleteProduct(room?._id, product?._id)}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -1694,7 +1776,11 @@ export function CheckoutPage() {
       alert("Failed to proceed to payment");
     }
   };
-
+  const minInstallationDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    return d.toISOString().split("T")[0]; // "YYYY-MM-DD"
+  })();
   return (
     <div className="min-h-screen bg-[#faf4e6]">
       <header className="bg-white border-b border-gray-200 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20">
@@ -1772,6 +1858,7 @@ export function CheckoutPage() {
                       placeholder="Pick a date"
                       type="date"
                       value={form.installationDate}
+                      min={minInstallationDate}
                     />
                   </div>
                 </div>

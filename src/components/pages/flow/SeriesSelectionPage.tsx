@@ -104,7 +104,7 @@ export default function SeriesSelectionPage() {
         <h2 className="font-['Poppins'] font-bold text-2xl text-[#1C1B1F] mb-8">
           Select from our series of cabinetries
         </h2>
-        <ul className="grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-4">
+        <ul className="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-2 gap-4">
           {series?.map(
             ({
               _id,

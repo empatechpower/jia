@@ -34,50 +34,7 @@ function formatPrice(n: number) {
   }).format(n);
 }
 
-// function Lightbox({
-//   url,
-//   alt,
-//   onClose,
-// }: {
-//   url: string;
-//   alt: string;
-//   onClose: () => void;
-// }) {
-//   return (
-//     <div
-//       aria-modal="true"
-//       className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-//       role="dialog"
-//       onClick={onClose}
-//     >
-//       <button
-//         aria-label="Close"
-//         className="absolute top-4 right-4 text-white"
-//         onClick={onClose}
-//       >
-//         <svg
-//           className="w-8 h-8"
-//           fill="none"
-//           stroke="currentColor"
-//           viewBox="0 0 24 24"
-//         >
-//           <path
-//             d="M6 18L18 6M6 6l12 12"
-//             strokeLinecap="round"
-//             strokeLinejoin="round"
-//             strokeWidth={2}
-//           />
-//         </svg>
-//       </button>
-//       <img
-//         alt={alt}
-//         className="max-w-full max-h-[90vh] object-contain rounded-xl"
-//         src={url}
-//         onClick={(e) => e.stopPropagation()}
-//       />
-//     </div>
-//   );
-// }
+// ─── Step 1: Confirm modal (existing) ────────────────────────────────────────
 
 function AddToCartModal({
   roomName,
@@ -128,6 +85,117 @@ function AddToCartModal({
   );
 }
 
+// ─── Step 2: Room picker modal ────────────────────────────────────────────────
+
+function RoomPickerModal({
+  rooms,
+  currentRoomId,
+  onSelect,
+  onBack,
+  onClose,
+}: {
+  rooms: any[];
+  currentRoomId: string;
+  onSelect: (roomId: string, roomName: string) => void;
+  onBack: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4"
+      aria-modal="true"
+      role="dialog"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <button
+            className="text-[#414042] hover:opacity-60 transition"
+            onClick={onBack}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M15 19l-7-7 7-7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+              />
+            </svg>
+          </button>
+          <h3 className="font-['Poppins'] font-bold text-base text-[#242424]">
+            Select a Room
+          </h3>
+          <button
+            className="text-[#999] hover:text-[#666] transition"
+            onClick={onClose}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M6 18L18 6M6 6l12 12"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Room list */}
+        <ul className="divide-y divide-gray-100 max-h-[60vh] overflow-y-auto">
+          {rooms.map((room: any) => (
+            <li key={room._id}>
+              <button
+                className={`w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition text-left ${
+                  room._id === currentRoomId ? "bg-[#faf4e6]" : ""
+                }`}
+                onClick={() => onSelect(room._id, room.name)}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Door icon */}
+                  <svg
+                    className="w-5 h-5 text-[#7b7267] shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M3 21h18M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16M9 10h.01"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.8}
+                    />
+                  </svg>
+                  <span className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
+                    {room.name}
+                  </span>
+                </div>
+                {room._id === currentRoomId && (
+                  <span className="font-['Poppins'] text-xs text-[#7b7267] font-medium">
+                    Current
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
 export default function ProductDetailsPage() {
   const {
     selectedProductName,
@@ -145,6 +213,8 @@ export default function ProductDetailsPage() {
     handleAddProductToCart,
     setShowSuccessMessage,
     propertyInfo,
+    setSelectedRoomId,
+    setSelectedRoom,
   } = useApp();
   const { isLoggedIn } = useApp();
 
@@ -271,14 +341,20 @@ export default function ProductDetailsPage() {
     width: !!cfg.width,
     door: isDoorComplete,
     "side-panel": isLShapeProduct || isTopHungSeries || !!cfg.sidePanel,
-    "drawer-lock": cfg.addLock === "No" ? true : hasLocks,
+    "drawer-lock": !type?.drawer
+      ? true
+      : cfg.addLock === "No"
+        ? true
+        : hasLocks,
     ledStrip: !!cfg.ledStrip,
-    "blum-runner": !!cfg.blumRunnerUpgrade,
+    "blum-runner": !type?.drawer ? true : !!cfg.blumRunnerUpgrade,
   };
 
   const isFormValid = Object.values(complete).every(Boolean);
 
   const [showCartModal, setShowCartModal] = useState(false);
+  const [showRoomPicker, setShowRoomPicker] = useState(false);
+  const [availableRooms, setAvailableRooms] = useState<any[]>([]);
   const [, setZoomImg] = useState<{ url: string; alt: string } | null>(null);
   const [lightbox, setLightbox] = useState<{
     images: { url: string; alt: string; id?: string }[];
@@ -323,6 +399,55 @@ export default function ProductDetailsPage() {
     setCurrentPage("roomSelection");
   }
 
+  useEffect(() => {
+    if (!propertyInfo?.projectId) return;
+    api.rooms
+      .listByProject(propertyInfo.projectId)
+      .then((res) => setAvailableRooms(res.response.results ?? []))
+      .catch(console.error);
+  }, [propertyInfo?.projectId]);
+  function doAddToCart(roomId: string, roomName: string) {
+    api.cart.add({
+      aluminium_frame_color: cfg.aluminiumFrameColor ?? "",
+      blum_runner_upgrade: cfg.blumRunnerUpgrade ?? "",
+      cost: prices?.original,
+      door_type: cfg.doorOption ?? "",
+      drawer_lock: cfg.addLock ?? "",
+      external_color: cfg.externalColor ?? "",
+      handle_color: cfg.handleColor ?? "",
+      handle_design: cfg.handleDesign ?? "",
+      internal_color: cfg.internalColor ?? "",
+      item: cfg.width_id ?? "",
+      led_light: cfg.ledStrip ?? "",
+      numlock: Number(cfg.numberOfLocks) ?? "",
+      project_cart: propertyInfo.projectId ?? "",
+      remarks: cfg.remarks,
+      room: roomId,
+      side_panel: cfg.sidePanel ?? "",
+      selected_aluminium_door_type: cfg.aluminiumDoorFinishing ?? "",
+      discount_rate: 0,
+      type: typeId,
+    });
+    handleAddProductToCart(
+      selectedProductName,
+      roomId,
+      roomName,
+      PRODUCT_GALLERY_IMAGES[0],
+      cfg as any,
+    );
+    setSelectedProductConfig(undefined);
+    setShowSuccessMessage(true);
+    setShowCartModal(false);
+    setShowRoomPicker(false);
+    navigateTo("cart", true); // ← go straight to cart after adding
+  }
+  function handleRoomSelect(roomId: string, roomName: string) {
+    setSelectedRoomId(roomId);
+    setSelectedRoom(roomName);
+    setShowRoomPicker(false);
+    // Immediately add to the newly selected room and go to cart
+    doAddToCart(roomId, roomName);
+  }
   function handleBack() {
     setSelectedProductConfig(undefined);
     setCurrentPage(previousPage === "cart" ? "cart" : "productSelection");
@@ -688,16 +813,15 @@ export default function ProductDetailsPage() {
                   <p className="font-['Poppins'] font-bold text-base text-[#242424] mb-3">
                     Product Gallery
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="flex gap-2 overflow-x-auto pb-1">
                     {works?.ListOfImg?.map((url: string, i: number) => {
                       const imageUrl = url?.startsWith("http")
                         ? url
                         : `https:${url}`;
-
                       return (
                         <button
                           key={i}
-                          className="aspect-square rounded-lg overflow-hidden border border-gray-100 hover:opacity-80 transition"
+                          className="shrink-0 w-[120px] h-[120px] rounded-lg overflow-hidden border border-gray-100 hover:opacity-80 transition"
                           onClick={() => {
                             const galleryImages = (works?.ListOfImg ?? []).map(
                               (u: string, j: number) => ({
@@ -744,7 +868,6 @@ export default function ProductDetailsPage() {
                           selected={cfg.internalColor === c}
                           onClick={() => {
                             set("internalColor")(c);
-                            console.log("Selected internal color:", cfg);
                           }}
                         />
                       ))}
@@ -961,26 +1084,67 @@ export default function ProductDetailsPage() {
                               Handle Design
                             </p>
                             <SwatchRow>
-                              {handleDesign.map((h: any) => (
-                                <ImageSwatch
-                                  key={h._id}
-                                  name={h.name}
-                                  imageUrl={
-                                    "https://images.unsplash.com/photo-1738520420690-9680253bf40b?w=400&q=80"
-                                  }
-                                  selected={cfg.handleDesign === h._id}
-                                  onSelect={() => {
-                                    set("handleDesign")(h._id);
-                                    set("handleColor")(null);
-                                  }}
-                                  onZoom={() =>
-                                    setZoomImg({
-                                      url: "https://images.unsplash.com/photo-1738520420690-9680253bf40b?w=400&q=80",
-                                      alt: h.name,
-                                    })
-                                  }
-                                />
-                              ))}
+                              {handleDesign.map((h: any) => {
+                                const imageUrl = h.image
+                                  ? `https:${h.image}`
+                                  : "https://images.unsplash.com/photo-1738520420690-9680253bf40b?w=400&q=80";
+
+                                const handleLightbox = () =>
+                                  setLightbox({
+                                    images: handleDesign.map((hd: any) => ({
+                                      url: hd.image
+                                        ? `https:${hd.image}`
+                                        : imageUrl,
+                                      alt: hd.name,
+                                      id: hd._id,
+                                    })),
+                                    index: handleDesign.findIndex(
+                                      (hd: any) => hd._id === h._id,
+                                    ),
+                                  });
+
+                                return (
+                                  <div
+                                    key={h._id}
+                                    className={`flex flex-col rounded-xl border-2 overflow-hidden transition cursor-pointer shrink-0 w-[150px] ${
+                                      cfg.handleDesign === h._id
+                                        ? "border-[#414042] border-[4px]"
+                                        : "border-[#e0e0e0] hover:border-[#c0c0c0]"
+                                    }`}
+                                    onClick={() => {
+                                      set("handleDesign")(h._id);
+                                      set("handleColor")(null);
+                                    }}
+                                  >
+                                    {/* Image */}
+                                    <div className="w-full h-[80px] overflow-hidden">
+                                      <img
+                                        alt={h.name}
+                                        className="w-full h-full object-cover"
+                                        loading="lazy"
+                                        src={imageUrl}
+                                      />
+                                    </div>
+
+                                    {/* Name + View Image button */}
+                                    <div className="bg-white px-2 py-1.5 text-center flex flex-col gap-1">
+                                      <p className="font-['Poppins'] font-bold text-[10px] text-[#242424] leading-tight">
+                                        {h.name}
+                                      </p>
+                                      <button
+                                        className="w-full bg-[#414042] hover:bg-[#565456] text-white font-['Poppins'] text-[10px] py-1 rounded transition"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleLightbox();
+                                        }}
+                                        type="button"
+                                      >
+                                        View Image
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </SwatchRow>
                           </div>
                         )}
@@ -1263,11 +1427,23 @@ export default function ProductDetailsPage() {
         <AddToCartModal
           roomName={selectedRoom}
           onConfirm={handleConfirmAdd}
-          onChangeRoom={() => {
-            setShowCartModal(false);
-            setCurrentPage("roomSelection");
-          }}
+          onChangeRoom={() => setShowRoomPicker(true)}
           onClose={() => setShowCartModal(false)}
+        />
+      )}
+      {showRoomPicker && (
+        <RoomPickerModal
+          rooms={availableRooms}
+          currentRoomId={selectedRoomId}
+          onSelect={handleRoomSelect} // ← adds to new room + goes to cart
+          onBack={() => {
+            setShowRoomPicker(false);
+            setShowCartModal(true); // ← back to confirm modal
+          }}
+          onClose={() => {
+            setShowRoomPicker(false);
+            setShowCartModal(false);
+          }}
         />
       )}
     </div>
