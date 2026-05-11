@@ -20,7 +20,8 @@ export type Page =
   | "privacy"
   | "profile"
   | "admin"
-  | "forgotPassword";
+  | "forgotPassword"
+  | "paymentSuccess";
 
 // ─── Domain Models ───────────────────────────────────────────────────────────
 

@@ -446,13 +446,13 @@ function OrderDetailsPage({
             finishMap[p.selected_aluminium_doorType]?.name ?? null,
         }));
 
-      const typesUsed = Array.from(
-        new Map(
-          products
-            .map((p: any) => [p.type, typeMap[p.type]])
-            .filter(([, v]: any) => !!v),
-        ).values(),
-      );
+      // const typesUsed = Array.from(
+      //   new Map(
+      //     products
+      //       .map((p: any) => [p.type, typeMap[p.type]])
+      //       .filter(([, v]: any) => !!v),
+      //   ).values(),
+      // );
 
       return {
         id: room._id,
@@ -1052,7 +1052,7 @@ function RoomSection({
         next.splice(dragOver, 0, moved);
 
         // Persist to Bubble
-        const newIds = next.map((p) => p._id);
+        // const newIds = next.map((p) => p._id);
         // api.rooms.reorderProducts(room._id, newIds).catch(console.error);
 
         return next;
@@ -1153,7 +1153,7 @@ function RoomSection({
                   draggable
                   onDragStart={() => handleDragStart(index)}
                   onDragOver={(e) => handleDragOver(e, index)}
-                  onDrop={(e) => handleDrop()}
+                  onDrop={() => handleDrop()}
                   onDragEnd={handleDragEnd}
                 >
                   <ProductCard
@@ -1767,6 +1767,7 @@ export function CheckoutPage() {
         total,
         form.email,
         orderId,
+        `${window.location.origin}?page=paymentSuccess`,
       );
       const url = paymentRes?.response?.result;
       if (!url) throw new Error("No payment URL returned");

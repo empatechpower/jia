@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { api } from "@/services/api";
+import InvoicePage from "@/components/pages/InvoicePage";
+const Logo = "/images/Jia_Logo.png";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,54 +102,26 @@ function Chevron({ open }: { open: boolean }) {
 
 // ─── JIA Logo ─────────────────────────────────────────────────────────────────
 
-function JIALogo() {
-  return (
-    <div className="w-10 h-10 border-2 border-[#1C1B1F] rounded-lg flex items-center justify-center bg-white shrink-0">
-      <svg viewBox="0 0 60 60" className="w-8 h-8" fill="none">
-        <rect
-          x="3"
-          y="3"
-          width="54"
-          height="54"
-          rx="8"
-          stroke="#1C1B1F"
-          strokeWidth="3"
-          fill="white"
-        />
-        <rect
-          x="10"
-          y="10"
-          width="40"
-          height="40"
-          rx="5"
-          stroke="#1C1B1F"
-          strokeWidth="1.5"
-          fill="white"
-        />
-        <text
-          x="30"
-          y="35"
-          textAnchor="middle"
-          fontSize="14"
-          fontWeight="700"
-          fill="#1C1B1F"
-          fontFamily="Poppins, sans-serif"
-        >
-          JIA
-        </text>
-      </svg>
-    </div>
-  );
-}
 
 // ─── Expanded order detail ────────────────────────────────────────────────────
 
-function OrderDetail({ order }: { order: Order }) {
+function OrderDetail({
+  order,
+  roomsForUI,
+  loading,
+  onShowInvoice,
+}: {
+  order: Order;
+  roomsForUI: any[];
+  loading: boolean;
+  onShowInvoice: () => void;
+}) {
   return (
     <div className="border-t border-gray-100 bg-white">
       {/* Header row */}
       <div className="flex items-start gap-3 px-4 py-4 border-b border-gray-100">
-        <JIALogo />
+        {/* <JIALogo /> */}
+        <img src={Logo} alt="JIA Logo" className="w-10 h-10" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -164,7 +138,10 @@ function OrderDetail({ order }: { order: Order }) {
                 </span>
               </p>
             </div>
-            <button className="shrink-0 px-3 py-1.5 border border-gray-300 rounded-lg font-['Poppins'] text-xs text-[#1C1B1F] hover:bg-gray-50 transition">
+            <button
+              onClick={onShowInvoice}
+              className="shrink-0 px-3 py-1.5 border border-gray-300 rounded-lg font-['Poppins'] text-xs text-[#1C1B1F] hover:bg-gray-50 transition"
+            >
               View Invoice
             </button>
           </div>
@@ -180,67 +157,72 @@ function OrderDetail({ order }: { order: Order }) {
       </div>
 
       {/* Rooms + products */}
-      {order?.rooms?.map((room, ri) => (
-        <div key={ri} className="border-b border-gray-100">
-          {/* Room name */}
-          <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] px-4 py-2.5 bg-gray-50">
-            {room.name}
-          </p>
+      {!loading &&
+        roomsForUI.map((room: any) => (
+          <div key={room.id} className="border-b border-gray-100">
+            {/* Room name */}
+            <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] px-4 py-2.5 bg-gray-50">
+              {room.name}
+            </p>
 
-          {/* Products */}
-          <div className="px-4 py-3 space-y-3">
-            {room.products.map((p) => (
-              <div key={p._id} className="flex gap-3">
-                {/* Sketch thumbnail */}
-                <div className="w-12 h-14 shrink-0 border border-gray-200 rounded-lg bg-[#f5f5f5] overflow-hidden">
-                  {p.sketchImage ? (
-                    <img
-                      alt={`Type ${p.code}`}
-                      className="w-full h-full object-contain"
-                      src={
-                        p.sketchImage.startsWith("http")
-                          ? p.sketchImage
-                          : `https:${p.sketchImage}`
-                      }
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[#ebebeb]" />
-                  )}
-                </div>
+            {/* Products */}
+            <div className="px-4 py-3 space-y-3">
+              {room.products.map((p: any) => (
+                <div key={p._id} className="flex gap-3">
+                  {/* Sketch thumbnail */}
+                  <div className="w-12 h-14 shrink-0 border border-gray-200 rounded-lg bg-[#f5f5f5] overflow-hidden">
+                    {p.sketchImage ? (
+                      <img
+                        alt={`Type ${p.code}`}
+                        className="w-full h-full object-contain"
+                        src={
+                          p.sketchImage.startsWith("http")
+                            ? p.sketchImage
+                            : `https:${p.sketchImage}`
+                        }
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-[#ebebeb]" />
+                    )}
+                  </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                    Type {p.code}
-                  </p>
-                  <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] mb-1">
-                    ${p.cost.toFixed(2)}
-                  </p>
-                  <div className="space-y-0.5">
-                    {[
-                      ["Internal Color", p.internal_color],
-                      ["External Color", p.laminate_color],
-                      ["Led Light", p.led_light_text],
-                      ["Width", p.width],
-                      ["Aluminium Tempered Glass", p.aluminium_tempered_glass],
-                      ["With Door", p.with_door],
-                    ]
-                      .filter(([, v]) => v && v !== "undefined")
-                      .map(([label, value]) => (
-                        <p
-                          key={label}
-                          className="font-['Poppins'] text-[11px] text-[#555]"
-                        >
-                          {label}: <span className="text-[#888]">{value}</span>
-                        </p>
-                      ))}
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
+                      Type {p.code}
+                    </p>
+                    <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] mb-1">
+                      ${p.cost.toFixed(2)}
+                    </p>
+                    <div className="space-y-0.5">
+                      {[
+                        ["Internal Color", p.internal_color],
+                        ["External Color", p.laminate_color],
+                        ["Led Light", p.led_light_text],
+                        ["Width", p.width],
+                        [
+                          "Aluminium Tempered Glass",
+                          p.aluminium_tempered_glass,
+                        ],
+                        ["With Door", p.with_door],
+                      ]
+                        .filter(([, v]) => v && v !== "undefined")
+                        .map(([label, value]) => (
+                          <p
+                            key={label}
+                            className="font-['Poppins'] text-[11px] text-[#555]"
+                          >
+                            {label}:{" "}
+                            <span className="text-[#888]">{value}</span>
+                          </p>
+                        ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
 
       {/* Pricing summary */}
       <div className="px-4 py-4 space-y-1.5 border-b border-gray-100">
@@ -281,7 +263,135 @@ function OrderDetail({ order }: { order: Order }) {
 
 function OrderCard({ order }: { order: Order }) {
   const [open, setOpen] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
 
+  // ── Same resolution pipeline as ShoppingCartPage ──────────────────────────
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [cartRooms, setCartRooms] = useState<any[]>([]);
+  const [typeList, setTypeList] = useState<any[]>([]);
+  const [productList, setProductList] = useState<any[]>([]);
+  const [colors, setColors] = useState<any[]>([]);
+  const [handleDesigns, setHandleDesigns] = useState<any[]>([]);
+  const [aluminium, setAluminium] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!open || cartRooms.length > 0) return; // only fetch once
+    setLoading(true);
+    Promise.all([
+      api.cart.list(order._id ?? order._id),
+      api.rooms.listByProject(order._id ?? order._id),
+      api.portfolio.laminate_color(),
+      api.products.get_handle_design(),
+      api.products.get_aluminium_finishing(),
+      api.series.list(),
+      api.products.get_all_products(),
+    ])
+      .then(
+        ([
+          cartRes,
+          roomRes,
+          colorRes,
+          handleRes,
+          alumRes,
+          typeRes,
+          productRes,
+        ]) => {
+          setCartItems(cartRes.response.results ?? []);
+          setCartRooms(roomRes.response.results ?? []);
+          setColors(colorRes.response.results ?? []);
+          setHandleDesigns(handleRes.response.results ?? []);
+          setAluminium(alumRes.response.results ?? []);
+          setTypeList(typeRes.response.results ?? []);
+          setProductList(productRes.response.results ?? []);
+        },
+      )
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  // ── Same lookup maps ───────────────────────────────────────────────────────
+  const typeMap = Object.fromEntries(typeList.map((t: any) => [t._id, t]));
+  const colorMap = Object.fromEntries(colors.map((c: any) => [c._id, c]));
+  const handleMap = Object.fromEntries(
+    handleDesigns.map((h: any) => [h._id, h]),
+  );
+  const finishMap = Object.fromEntries(aluminium.map((a: any) => [a._id, a]));
+  const productMap = Object.fromEntries(cartItems.map((p: any) => [p._id, p]));
+  const pricingMap = Object.fromEntries(
+    productList.map((p: any) => [p._id, p]),
+  );
+  const cartItemIdSet = new Set(cartItems.map((p: any) => p._id));
+  const isSmallWidth = ["L400mm", "L450mm", "L500mm"];
+
+  function getSketchImage(t: any, product: any) {
+    const length = product?.pricing?.length;
+    const isSmall = isSmallWidth.includes(length);
+    return isSmall ? t.sketchSmall : t.sketchBig;
+  }
+
+  function getRenderImage(t: any, product: any) {
+    const length = product?.pricing?.length;
+    const color = product?.internal_color;
+    const isSmall = isSmallWidth.includes(length);
+    if (color === "Light") return isSmall ? t.photoLightSmall : t.photoLightBig;
+    return isSmall ? t.photoDarkSmall : t.photoDarkBig;
+  }
+  const roomsForUI = cartRooms
+    .map((room: any) => {
+      const resolvedIds = (room.items ?? []).filter((id: string) =>
+        cartItemIdSet.has(id),
+      );
+      const products = resolvedIds
+        .map((id: string) => productMap[id])
+        .filter(Boolean)
+        .map((p: any) => {
+          const pricing = pricingMap[p.item];
+          const typeData = typeMap[p.type];
+          const withPricing = { ...p, pricing };
+          return {
+            ...withPricing,
+            pricing,
+            code: typeData?.code ?? null,
+            laminate_color:
+              colorMap[p.external_color]?.colorDisplayName ?? null,
+            handle_design: handleMap[p.handle_design_text]?.name ?? null,
+            door_finishing:
+              finishMap[p.selected_aluminium_doorType]?.name ?? null,
+            sketchImage: typeData
+              ? getSketchImage(typeData, withPricing)
+              : null,
+            renderImage: typeData
+              ? getRenderImage(typeData, withPricing)
+              : null,
+          };
+        });
+      return {
+        id: room._id,
+        name: room.name,
+        products,
+        sketchImages: products.map((p: any) => p.sketchImage).filter(Boolean),
+        renderImages: products.map((p: any) => p.renderImage).filter(Boolean),
+      };
+    })
+    .filter((room: any) => room.products.length > 0);
+
+  // ── Invoice view ───────────────────────────────────────────────────────────
+  if (showInvoice) {
+    return (
+      <InvoicePage
+        order={{
+          ...order,
+          rooms: roomsForUI.map((r) => ({
+            id: r.id,
+            name: r.name,
+            products: r.products,
+            sketchImages: r.sketchImages,
+          })),
+        }}
+        onBack={() => setShowInvoice(false)}
+      />
+    );
+  }
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
       {/* Collapsed row — always visible */}
@@ -317,7 +427,14 @@ function OrderCard({ order }: { order: Order }) {
       </button>
 
       {/* Expanded detail */}
-      {open && <OrderDetail order={order} />}
+      {open && (
+        <OrderDetail
+          order={order}
+          roomsForUI={roomsForUI} // ← pass resolved rooms down
+          loading={loading}
+          onShowInvoice={() => setShowInvoice(true)}
+        />
+      )}
     </div>
   );
 }

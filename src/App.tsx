@@ -31,6 +31,10 @@ const ProductDetailsPage = lazy(
 );
 const ProfilePage = lazy(() => import("@/components/pages/ProfilePage"));
 // AdminPage with graceful fallback when the file isn't yet present
+
+const PaymentSuccessPage = lazy(
+  () => import("@/components/pages/PaymentSuccessPage"),
+);
 const AdminPage = () => (
   <div className="min-h-screen flex items-center justify-center font-['Poppins'] text-[#666]">
     Admin page coming soon.
@@ -101,6 +105,7 @@ function Router() {
     terms: <TermsAndConditionsPage />,
     privacy: <PrivacyPolicyPage />,
     admin: <AdminPage />,
+    paymentSuccess: <PaymentSuccessPage />,
   };
 
   return (

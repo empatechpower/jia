@@ -103,7 +103,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Navigation
   const [currentPage, setCurrentPage] = useState<Page>("landing");
   const [previousPage, setPreviousPage] = useState<Page>("landing");
-
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("page") === "paymentSuccess") {
+      setCurrentPage("paymentSuccess");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
   const navigateTo = useCallback((page: Page, savePrevious = false) => {
     if (savePrevious) setPreviousPage((prev) => prev);
     setCurrentPage((prev) => {

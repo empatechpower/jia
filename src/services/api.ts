@@ -561,9 +561,14 @@ export const api = {
     },
   },
   payment: {
-    create_payment: (amount: number, email: string, receipt: string) => {
+    create_payment: (
+      amount: number,
+      email: string,
+      receipt: string,
+      redirectUrl: string,
+    ) => {
       return dataGet<{ response: { result: any } }>(
-        `/make-payment?amount=${amount}&email=${email}&reference=${receipt}`,
+        `/make-payment?amount=${amount}&email=${email}&reference=${receipt}&redirect_url=${redirectUrl}`,
       );
     },
   },
