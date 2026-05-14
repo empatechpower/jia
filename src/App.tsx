@@ -35,12 +35,8 @@ const ProfilePage = lazy(() => import("@/components/pages/ProfilePage"));
 const PaymentSuccessPage = lazy(
   () => import("@/components/pages/PaymentSuccessPage"),
 );
-const AdminPage = () => (
-  <div className="min-h-screen flex items-center justify-center font-['Poppins'] text-[#666]">
-    Admin page coming soon.
-  </div>
-);
 
+const AdminPortal = lazy(() => import("@/components/pages/AdminPortal"));
 // ─── Loading indicator ────────────────────────────────────────────────────────
 
 function PageLoader() {
@@ -104,7 +100,7 @@ function Router() {
     profile: <ProfilePage />,
     terms: <TermsAndConditionsPage />,
     privacy: <PrivacyPolicyPage />,
-    admin: <AdminPage />,
+    admin: <AdminPortal />,
     paymentSuccess: <PaymentSuccessPage />,
   };
 

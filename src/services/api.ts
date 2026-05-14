@@ -275,8 +275,6 @@ async function dataGet<T>(
     console.log("FAILED TO PARSE JSON");
   }
 
-  console.log("DATA GET RESPONSE:", data); // ✅ DEBUG
-
   if (
     data?.error_class === "Unauthorized" ||
     data?.translation?.includes("Invalid or expired token")
@@ -296,6 +294,34 @@ async function dataGet<T>(
 // ─── API namespaces ───────────────────────────────────────────────────────────
 
 export const api = {
+  admin: {
+    listOrders: () =>
+      dataGet<{ response: BubbleList<any> }>("/get_paid_projects"),
+
+    updateOrderStatus: (orderId: string, status: string) =>
+      request<void>("POST", "/update-order-status", {
+        order_id: orderId,
+        status,
+      }),
+
+    listUsers: () => dataGet<{ response: BubbleList<any> }>("/get_all_users"),
+
+    listConversations: () =>
+      dataGet<{ response: BubbleList<any> }>("/message", {
+        sort_field: "Created Date",
+        descending: "true",
+      }),
+
+    sendMessage: (customerId: string, message: string, senderRole: string) =>
+      request<void>("POST", "/send-message", {
+        customer_id: customerId,
+        message,
+        sender_role: senderRole,
+      }),
+
+    listFabricationOrders: () =>
+      dataGet<{ response: BubbleList<any> }>("/get_paid_projects"),
+  },
   // ── Auth ─────────────────────────────────────────────────────────────────
 
   auth: {
