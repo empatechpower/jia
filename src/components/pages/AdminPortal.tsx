@@ -17,6 +17,8 @@ interface BubbleOrder {
   installationDate?: number;
   homeZipCode?: string;
   homeUnit?: string;
+  paid?: boolean;
+
   items?: string[];
   project?: string;
 }
@@ -98,7 +100,9 @@ function timeAgo(ts: number): string {
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor(status)}`}
+      className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor(
+        status
+      )}`}
     >
       {statusLabel(status)}
     </span>
@@ -318,7 +322,7 @@ function getRenderImg(t: any, p: any) {
   return isSmall ? t.photoDarkSmall : t.photoDarkBig;
 }
 function fmtConfig(
-  p: Record<string, unknown>,
+  p: Record<string, unknown>
 ): Array<{ label: string; value: string }> {
   const labelMap: Record<string, string> = {
     internal_color: "Internal Color",
@@ -362,7 +366,7 @@ function fmtConfig(
         v !== undefined &&
         typeof v !== "object" &&
         v !== "" &&
-        !skip.has(k),
+        !skip.has(k)
     )
     .map(([k, v]) => ({ label: labelMap[k], value: String(v) }));
 }
@@ -417,7 +421,7 @@ function OrderDetailPanel({
           setAluminium(alumRes.response.results ?? []);
           setTypeList(typeRes.response.results ?? []);
           setProductList(productRes.response.results ?? []);
-        },
+        }
       )
       .catch(console.error)
       .finally(() => setItemsLoading(false));
@@ -430,7 +434,7 @@ function OrderDetailPanel({
   const finishMap = Object.fromEntries(aluminium.map((a: any) => [a._id, a]));
   const productMap = Object.fromEntries(cartItems.map((p: any) => [p._id, p]));
   const pricingMap = Object.fromEntries(
-    productList.map((p: any) => [p._id, p]),
+    productList.map((p: any) => [p._id, p])
   );
   const cartItemIdSet = new Set(cartItems.map((p: any) => p._id));
 
@@ -438,7 +442,7 @@ function OrderDetailPanel({
   const roomsForUI = cartRooms
     .map((room: any) => {
       const resolvedIds = (room.items ?? []).filter((id: string) =>
-        cartItemIdSet.has(id),
+        cartItemIdSet.has(id)
       );
       const products = resolvedIds
         .map((id: string) => productMap[id])
@@ -546,7 +550,11 @@ function OrderDetailPanel({
           <div className="text-right">
             <p className="font-['Poppins'] text-xs text-[#888]">Payment</p>
             <p
-              className={`font-['Poppins'] font-semibold text-sm mt-0.5 ${order.payment_status === "paid" ? "text-emerald-600" : "text-amber-600"}`}
+              className={`font-['Poppins'] font-semibold text-sm mt-0.5 ${
+                order.payment_status === "paid"
+                  ? "text-emerald-600"
+                  : "text-amber-600"
+              }`}
             >
               {order.payment_status === "paid" ? "✓ Paid" : "Awaiting Payment"}
             </p>
@@ -760,7 +768,11 @@ function OrderDetailPanel({
               <button
                 key={s}
                 disabled={cur || updating}
-                className={`px-4 py-2 rounded-lg font-['Poppins'] text-sm transition border ${cur ? "bg-[#1C1B1F] text-white border-[#1C1B1F]" : "border-gray-200 text-[#555] hover:border-gray-400 disabled:opacity-50"}`}
+                className={`px-4 py-2 rounded-lg font-['Poppins'] text-sm transition border ${
+                  cur
+                    ? "bg-[#1C1B1F] text-white border-[#1C1B1F]"
+                    : "border-gray-200 text-[#555] hover:border-gray-400 disabled:opacity-50"
+                }`}
                 onClick={() => handle(s)}
               >
                 {s}
@@ -824,7 +836,7 @@ function ChatPanel({
         c.messages.sort((a, b) => a["Created Date"] - b["Created Date"]);
       });
       const list = Array.from(convMap.values()).sort(
-        (a, b) => b.lastTime - a.lastTime,
+        (a, b) => b.lastTime - a.lastTime
       );
       setConversations(list);
       if (activeConv) {
@@ -854,7 +866,7 @@ function ChatPanel({
       await api.admin.sendMessage(
         activeConv.userId,
         message.trim(),
-        currentUserRole,
+        currentUserRole
       );
       setMessage("");
       await fetchMessages();
@@ -887,7 +899,9 @@ function ChatPanel({
               conversations.map((conv) => (
                 <button
                   key={conv.userId}
-                  className={`w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-gray-50 transition ${activeConv?.userId === conv.userId ? "bg-gray-50" : ""}`}
+                  className={`w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-gray-50 transition ${
+                    activeConv?.userId === conv.userId ? "bg-gray-50" : ""
+                  }`}
                   onClick={() => setActiveConv(conv)}
                 >
                   <div
@@ -902,7 +916,11 @@ function ChatPanel({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <p
-                        className={`font-['Poppins'] text-sm truncate ${conv.unread > 0 ? "font-semibold text-[#1C1B1F]" : "font-medium text-[#555]"}`}
+                        className={`font-['Poppins'] text-sm truncate ${
+                          conv.unread > 0
+                            ? "font-semibold text-[#1C1B1F]"
+                            : "font-medium text-[#555]"
+                        }`}
                       >
                         {conv.userName}
                       </p>
@@ -951,17 +969,25 @@ function ChatPanel({
                 return (
                   <div
                     key={msg._id}
-                    className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}
+                    className={`flex ${
+                      isAdmin ? "justify-end" : "justify-start"
+                    }`}
                   >
                     <div
-                      className={`max-w-[72%] px-4 py-2.5 rounded-2xl ${isAdmin ? "rounded-br-sm text-white" : "rounded-bl-sm bg-gray-100 text-[#1C1B1F]"}`}
+                      className={`max-w-[72%] px-4 py-2.5 rounded-2xl ${
+                        isAdmin
+                          ? "rounded-br-sm text-white"
+                          : "rounded-bl-sm bg-gray-100 text-[#1C1B1F]"
+                      }`}
                       style={isAdmin ? { backgroundColor: accentColor } : {}}
                     >
                       <p className="font-['Poppins'] text-sm leading-relaxed">
                         {msg.body}
                       </p>
                       <p
-                        className={`font-['Poppins'] text-[10px] mt-1 ${isAdmin ? "text-white/60" : "text-[#bbb]"}`}
+                        className={`font-['Poppins'] text-[10px] mt-1 ${
+                          isAdmin ? "text-white/60" : "text-[#bbb]"
+                        }`}
                       >
                         {timeAgo(msg["Created Date"])}
                       </p>
@@ -1103,7 +1129,11 @@ function RoleSelectionPage({ onSelect }: { onSelect: (role: Role) => void }) {
         {roles.map((role) => (
           <button
             key={role.id}
-            className={`text-left bg-white rounded-2xl p-6 border-2 transition-all relative ${selected === role.id ? "border-[#1C1B1F] shadow-lg" : "border-gray-200 hover:border-gray-300"}`}
+            className={`text-left bg-white rounded-2xl p-6 border-2 transition-all relative ${
+              selected === role.id
+                ? "border-[#1C1B1F] shadow-lg"
+                : "border-gray-200 hover:border-gray-300"
+            }`}
             onClick={() => setSelected(role.id)}
           >
             {selected === role.id && (
@@ -1167,7 +1197,11 @@ function RoleSelectionPage({ onSelect }: { onSelect: (role: Role) => void }) {
         ))}
       </div>
       <button
-        className={`px-10 py-3.5 rounded-xl font-['Poppins'] font-semibold text-base transition ${selected ? "bg-[#1C1B1F] text-white hover:bg-[#333] active:scale-95" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
+        className={`px-10 py-3.5 rounded-xl font-['Poppins'] font-semibold text-base transition ${
+          selected
+            ? "bg-[#1C1B1F] text-white hover:bg-[#333] active:scale-95"
+            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+        }`}
         disabled={!selected}
         onClick={() => selected && onSelect(selected)}
       >
@@ -1209,12 +1243,8 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
   }
 
   const totalRevenue = orders.reduce((s, o) => s + (o.paidAmount ?? 0), 0);
-  const confirmed = orders.filter(
-    (o) => o.status?.toLowerCase() === "confirmed",
-  ).length;
-  const pending = orders.filter(
-    (o) => o.status?.toLowerCase() === "pending",
-  ).length;
+  const confirmed = orders.filter((o) => o.paid === true).length;
+  const pending = orders.filter((o) => o.paid !== true).length;
 
   const filteredOrders = orders.filter((o) => {
     const q = searchTerm.toLowerCase();
@@ -1254,8 +1284,8 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
             {selectedOrder
               ? "Order Details"
               : activeTab === "overview"
-                ? "Dashboard Overview"
-                : activeTab}
+              ? "Dashboard Overview"
+              : activeTab}
           </h1>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-[#1C1B1F] flex items-center justify-center">
@@ -1276,7 +1306,9 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard
                       label="Total Revenue"
-                      value={`$${totalRevenue.toLocaleString("en-SG", { minimumFractionDigits: 2 })}`}
+                      value={`$${totalRevenue.toLocaleString("en-SG", {
+                        minimumFractionDigits: 2,
+                      })}`}
                       icon="💰"
                     />
                     <StatCard
@@ -1367,7 +1399,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                         onChange={(e) => setFilterStatus(e.target.value)}
                       >
                         <option value="all">All statuses</option>
-                        <option value="pending">Pending</option>
+
                         <option value="confirmed">Confirmed</option>
                         <option value="in_progress">In Progress</option>
                         <option value="completed">Completed</option>
@@ -1598,8 +1630,8 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
                         label="Pending"
                         value={String(
                           orders.filter(
-                            (o) => o.status?.toLowerCase() === "pending",
-                          ).length,
+                            (o) => o.status?.toLowerCase() === "pending"
+                          ).length
                         )}
                         icon="⏳"
                       />
@@ -1607,8 +1639,8 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
                         label="Confirmed"
                         value={String(
                           orders.filter(
-                            (o) => o.status?.toLowerCase() === "confirmed",
-                          ).length,
+                            (o) => o.status?.toLowerCase() === "confirmed"
+                          ).length
                         )}
                         icon="✅"
                       />
@@ -1709,7 +1741,7 @@ function VendorOrderDetail({
           setAluminium(alumRes.response.results ?? []);
           setTypeList(typeRes.response.results ?? []);
           setProductList(productRes.response.results ?? []);
-        },
+        }
       )
       .catch(console.error)
       .finally(() => setItemsLoading(false));
@@ -1721,14 +1753,14 @@ function VendorOrderDetail({
   const finishMap = Object.fromEntries(aluminium.map((a: any) => [a._id, a]));
   const productMap = Object.fromEntries(cartItems.map((p: any) => [p._id, p]));
   const pricingMap = Object.fromEntries(
-    productList.map((p: any) => [p._id, p]),
+    productList.map((p: any) => [p._id, p])
   );
   const cartItemIdSet = new Set(cartItems.map((p: any) => p._id));
 
   const roomsForUI = cartRooms
     .map((room: any) => {
       const resolvedIds = (room.items ?? []).filter((id: string) =>
-        cartItemIdSet.has(id),
+        cartItemIdSet.has(id)
       );
       const products = resolvedIds
         .map((id: string) => productMap[id])
@@ -1801,7 +1833,9 @@ function VendorOrderDetail({
             },
             {
               label: "Amount",
-              value: `$${order.paidAmount?.toLocaleString("en-SG", { minimumFractionDigits: 2 })}`,
+              value: `$${order.paidAmount?.toLocaleString("en-SG", {
+                minimumFractionDigits: 2,
+              })}`,
             },
           ].map(({ label, value }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-3">
@@ -1973,7 +2007,7 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
   }
 
   const filtered = orders.filter(
-    (o) => filter === "all" || getStage(o.status) === filter,
+    (o) => filter === "all" || getStage(o.status) === filter
   );
 
   return (
@@ -2016,7 +2050,7 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                   label="In Fabrication"
                   value={String(
                     orders.filter((o) => getStage(o.status) === "Fabrication")
-                      .length,
+                      .length
                   )}
                   icon="🔧"
                 />
@@ -2024,7 +2058,7 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                   label="Completed"
                   value={String(
                     orders.filter((o) => getStage(o.status) === "Completion")
-                      .length,
+                      .length
                   )}
                   icon="🏁"
                 />
@@ -2034,12 +2068,16 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                   (f) => (
                     <button
                       key={f}
-                      className={`px-4 py-2 rounded-full font-['Poppins'] text-sm font-medium transition ${filter === f ? "bg-[#1C1B1F] text-white" : "bg-white border border-gray-200 text-[#555] hover:border-gray-300"}`}
+                      className={`px-4 py-2 rounded-full font-['Poppins'] text-sm font-medium transition ${
+                        filter === f
+                          ? "bg-[#1C1B1F] text-white"
+                          : "bg-white border border-gray-200 text-[#555] hover:border-gray-300"
+                      }`}
                       onClick={() => setFilter(f)}
                     >
                       {f === "all" ? "All Stages" : f}
                     </button>
-                  ),
+                  )
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2063,7 +2101,9 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                         </div>
                         <div className="flex items-center gap-2">
                           <span
-                            className={`px-2.5 py-1 rounded-full text-xs font-['Poppins'] font-semibold ${stageColor(stage)}`}
+                            className={`px-2.5 py-1 rounded-full text-xs font-['Poppins'] font-semibold ${stageColor(
+                              stage
+                            )}`}
                           >
                             {stage}
                           </span>
@@ -2097,13 +2137,19 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                         </p>
                         <div className="flex items-center gap-2">
                           <span
-                            className={`font-['Poppins'] text-xs font-semibold ${progress >= 90 ? "text-emerald-600" : progress >= 50 ? "text-blue-600" : "text-amber-600"}`}
+                            className={`font-['Poppins'] text-xs font-semibold ${
+                              progress >= 90
+                                ? "text-emerald-600"
+                                : progress >= 50
+                                ? "text-blue-600"
+                                : "text-amber-600"
+                            }`}
                           >
                             {progress >= 90
                               ? "Almost done"
                               : progress >= 50
-                                ? "On track"
-                                : "In progress"}
+                              ? "On track"
+                              : "In progress"}
                           </span>
                           <span className="font-['Poppins'] text-xs text-[#7b7267]">
                             Tap to view →

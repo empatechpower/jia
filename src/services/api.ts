@@ -285,7 +285,7 @@ async function dataGet<T>(
 export const api = {
   admin: {
     listOrders: () =>
-      dataGet<{ response: BubbleList<any> }>("/get_paid_projects"),
+      dataGet<{ response: BubbleList<any> }>("/get_all_projects"),
 
     updateOrderStatus: (orderId: string, status: string) =>
       request<void>("POST", "/update-order-status", {
@@ -480,14 +480,6 @@ export const api = {
     /** PATCH /wf/rename-room */
     rename: (roomId: string, name: string) =>
       request<void>("POST", "/rename_room", { roomId: roomId, name }),
-
-    /** GET /obj/room?constraints=[{"key":"project_id"...}] */
-    // listByProject: (projectId: string) =>
-    //   dataGet<{ response: BubbleList<Room> }>("/room", {
-    //     constraints: JSON.stringify([
-    //       { key: "project_id", constraint_type: "equals", value: projectId },
-    //     ]),
-    //   }),
     delete: (roomId: string) =>
       request<void>("POST", "/delete-room", { room_id: roomId }),
   },
@@ -515,9 +507,6 @@ export const api = {
       room: string;
       side_panel: string;
       selected_aluminium_door_type: string;
-      // product_name: string;
-      // product_image: string;
-      // base_price: number;
       type: string;
       discount_rate: number;
       // config: ProductConfiguration;
