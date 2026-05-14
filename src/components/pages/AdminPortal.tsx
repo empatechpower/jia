@@ -587,7 +587,7 @@ function OrderDetailPanel({
               {/* Sketch + render row */}
               {room.sketchImages.length > 0 && (
                 <div className="px-5 py-3 flex gap-3 overflow-x-auto border-b border-gray-50">
-                  {room.products.map((p: any, i: number) => (
+                  {room.products.map((p: any) => (
                     <div key={p._id} className="shrink-0 flex gap-2">
                       {p.sketchImage && (
                         <div className="w-[70px] h-[90px] border border-gray-200 rounded-lg bg-[#f5f5f5] overflow-hidden">
