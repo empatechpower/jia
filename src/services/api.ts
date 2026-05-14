@@ -10,7 +10,7 @@
  */
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const BASE = "https://jiaideas.com/api/1.1";
+const BASE = "https://app.jiaideas.com/api/1.1";
 
 // const BASE = "https://jiaideas.com/version-test/api/1.1";
 // const VERSION =  "live"; // "live" | "test"
