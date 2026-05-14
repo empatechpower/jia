@@ -1,14 +1,3 @@
-/**
- * api.ts — Centralised API service for the JIA Ideas frontend.
- *
- * All Bubble backend calls go through this file.
- * Swap the BASE_URL env var and this file is your only change point.
- *
- * Usage:
- *   import { api } from "@/services/api";
- *   const products = await api.products.list({ series: "hanging-drawers" });
- */
-
 // ─── Config ───────────────────────────────────────────────────────────────────
 const BASE = "https://app.jiaideas.com/api/1.1";
 
@@ -205,7 +194,7 @@ async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
-  token?: string | null,
+  token?: string | null
 ): Promise<T> {
   const isFormData = body instanceof FormData;
 
@@ -252,7 +241,7 @@ async function request<T>(
 // Helper for Bubble's Data API (GET list/single)
 async function dataGet<T>(
   path: string,
-  params?: Record<string, string>,
+  params?: Record<string, string>
 ): Promise<T> {
   const url = new URL(`${BASE}/wf${path}`);
 
@@ -418,22 +407,22 @@ export const api = {
   series: {
     list: () => {
       return dataGet<{ response: BubbleList<Series> }>(
-        "/get_all_carpentry_type",
+        "/get_all_carpentry_type"
       );
     },
     get_category: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_carpentry_category",
+        "/get_carpentry_category"
       );
     },
     get_type: (category: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_carpentry_type?category=${category}`,
+        `/get_carpentry_type?category=${category}`
       );
     },
     get_a_type: (category: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_type_by_id?id=${category}`,
+        `/get_type_by_id?id=${category}`
       );
     },
   },
@@ -486,7 +475,7 @@ export const api = {
       dataGet<{ response: any }>(`/get_user_rooms?area=${area}`),
     listByProject: (project: string) =>
       dataGet<{ response: any }>(
-        `/get_user_rooms_by_project?project=${project}`,
+        `/get_user_rooms_by_project?project=${project}`
       ),
     /** PATCH /wf/rename-room */
     rename: (roomId: string, name: string) =>
@@ -537,7 +526,7 @@ export const api = {
     /** GET /obj/cart_item?constraints=[...] */
     list: (project: string) =>
       dataGet<{ response: BubbleList<CartItem> }>(
-        `/get_cart_items?project=${project}`,
+        `/get_cart_items?project=${project}`
       ),
 
     /** DELETE via POST /wf/remove-from-cart */
@@ -567,22 +556,22 @@ export const api = {
   portfolio: {
     list: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_portfolio",
+        "/get_portfolio"
       );
     },
     laminate_color: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_carpentry_external_colors",
+        "/get_carpentry_external_colors"
       );
     },
     sample_products: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_sample_products",
+        "/get_sample_products"
       );
     },
     single: (id: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_a_portfolio?id=${id}`,
+        `/get_a_portfolio?id=${id}`
       );
     },
   },
@@ -591,10 +580,10 @@ export const api = {
       amount: number,
       email: string,
       receipt: string,
-      redirectUrl: string,
+      redirectUrl: string
     ) => {
       return dataGet<{ response: { result: any } }>(
-        `/make-payment?amount=${amount}&email=${email}&reference=${receipt}&redirect_url=${redirectUrl}`,
+        `/make-payment?amount=${amount}&email=${email}&reference=${receipt}&redirect_url=${redirectUrl}`
       );
     },
   },
