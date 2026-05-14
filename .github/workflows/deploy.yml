@@ -30,7 +30,7 @@ jobs:
 
       - name: Build
         run: npm run build
-
+        
       - name: Deploy to SiteGround via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
