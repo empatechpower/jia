@@ -62,6 +62,7 @@ export interface CartProduct {
   name: string;
   price: number;
   image: string;
+  sketchImage?: any;
   config?: ProductConfig;
   cost?: number;
   code?: string;
@@ -1159,7 +1160,7 @@ function RoomSection({
                   <ProductCard
                     product={product}
                     roomId={room?._id}
-                    sketch={room?.sketchImages[0]}
+                    sketch={product.sketchImage ?? room.sketchImages[0]}
                     onDelete={() => onDeleteProduct(room?._id, product?._id)}
                   />
                 </div>
@@ -1307,44 +1308,39 @@ export function ShoppingCartPage() {
       const products = (room.items ?? [])
         .map((id: string) => productMap[id])
         .filter(Boolean)
-        .map((p: any) => ({
-          ...p,
-          pricing: pricingMap[p.item],
-          code: typeMap[p.type]?.code ?? null,
-          handle_design: handleMap[p.handle_design_text]?.name ?? null,
-          laminate_color: colorMap[p.external_color]?.colorDisplayName ?? null,
-          door_finishing:
-            finishMap[p.selected_aluminium_doorType]?.name ?? null,
-        }));
-
-      const uniqueTypes = Array.from(
-        new Map(
-          products
-            .map((p: any) => [p.type, typeMap[p.type]])
-            .filter(([, v]: any) => !!v),
-        ).values(),
-      );
+        .map((p: any) => {
+          const pricing = pricingMap[p.item];
+          const typeData = typeMap[p.type];
+          const withPricing = { ...p, pricing };
+          console.log("pricing object:", pricing);
+          console.log("pricing.length:", pricing?.length);
+          console.log("typeData:", typeData?.code);
+          return {
+            ...withPricing,
+            pricing,
+            code: typeData?.code ?? null,
+            handle_design: handleMap[p.handle_design_text]?.name ?? null,
+            laminate_color:
+              colorMap[p.external_color]?.colorDisplayName ?? null,
+            door_finishing:
+              finishMap[p.selected_aluminium_doorType]?.name ?? null,
+            // ✅ per-product image using its own pricing/color
+            sketchImage: typeData
+              ? getSketchImage(typeData, withPricing)
+              : null,
+            renderImage: typeData
+              ? getRenderImage(typeData, withPricing)
+              : null,
+          };
+        });
 
       return {
         _id: room._id,
         name: room.name,
         products,
-        sketchImages: uniqueTypes
-          .map((t: any) =>
-            getSketchImage(
-              t,
-              products.find((p: any) => p.type === t._id),
-            ),
-          )
-          .filter(Boolean),
-        renderImages: uniqueTypes
-          .map((t: any) =>
-            getRenderImage(
-              t,
-              products.find((p: any) => p.type === t._id),
-            ),
-          )
-          .filter(Boolean),
+        // ✅ build image arrays from per-product images
+        sketchImages: products.map((p: any) => p.sketchImage).filter(Boolean),
+        renderImages: products.map((p: any) => p.renderImage).filter(Boolean),
       };
     })
     .filter((room: any) => room.products.length > 0);
