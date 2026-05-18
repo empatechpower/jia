@@ -194,7 +194,7 @@ async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
-  token?: string | null
+  token?: string | null,
 ): Promise<T> {
   const isFormData = body instanceof FormData;
 
@@ -241,7 +241,7 @@ async function request<T>(
 // Helper for Bubble's Data API (GET list/single)
 async function dataGet<T>(
   path: string,
-  params?: Record<string, string>
+  params?: Record<string, string>,
 ): Promise<T> {
   const url = new URL(`${BASE}/wf${path}`);
 
@@ -287,6 +287,9 @@ export const api = {
     listOrders: () =>
       dataGet<{ response: BubbleList<any> }>("/get_all_projects"),
 
+    listAssignedOrders: () =>
+      dataGet<{ response: BubbleList<any> }>("/get_assigned_orders"),
+
     updateOrderStatus: (orderId: string, status: string) =>
       request<void>("POST", "/update-order-status", {
         order_id: orderId,
@@ -310,6 +313,34 @@ export const api = {
 
     listFabricationOrders: () =>
       dataGet<{ response: BubbleList<any> }>("/get_paid_projects"),
+    assignUserRole: (userId: string, role: string) =>
+      request("POST", "/assign-user-role", { user_id: userId, role }),
+    assignOrder: (orderId: string, salespersonId: string) =>
+      request("POST", "/assign-order", {
+        order_id: orderId,
+        salesperson_id: salespersonId,
+      }),
+    unassignOrder: (orderId: string, salespersonId: string) =>
+      request("POST", "/unassign-order", {
+        order_id: orderId,
+        salesperson_id: salespersonId,
+      }),
+    getOrderSalespersons: (orderId: string) =>
+      dataGet<{ response: BubbleList<any> }>("/get_order_salespersons", {
+        order_id: orderId,
+      }),
+    updateDONumber: (orderId: string, doNumber: string) =>
+      request("POST", "/update-do-number", {
+        order_id: orderId,
+        do_number: doNumber,
+      }),
+    resendInvoice: (orderId: string, email: string) =>
+      request("POST", "/resend-invoice", { order_id: orderId, email }),
+    updateOrderImages: (orderId: string, images: string[]) =>
+      request("POST", "/update-order-images", {
+        order_id: orderId,
+        images: images.join(","),
+      }),
   },
   // ── Auth ─────────────────────────────────────────────────────────────────
 
@@ -407,22 +438,22 @@ export const api = {
   series: {
     list: () => {
       return dataGet<{ response: BubbleList<Series> }>(
-        "/get_all_carpentry_type"
+        "/get_all_carpentry_type",
       );
     },
     get_category: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_carpentry_category"
+        "/get_carpentry_category",
       );
     },
     get_type: (category: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_carpentry_type?category=${category}`
+        `/get_carpentry_type?category=${category}`,
       );
     },
     get_a_type: (category: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_type_by_id?id=${category}`
+        `/get_type_by_id?id=${category}`,
       );
     },
   },
@@ -475,7 +506,7 @@ export const api = {
       dataGet<{ response: any }>(`/get_user_rooms?area=${area}`),
     listByProject: (project: string) =>
       dataGet<{ response: any }>(
-        `/get_user_rooms_by_project?project=${project}`
+        `/get_user_rooms_by_project?project=${project}`,
       ),
     /** PATCH /wf/rename-room */
     rename: (roomId: string, name: string) =>
@@ -515,7 +546,7 @@ export const api = {
     /** GET /obj/cart_item?constraints=[...] */
     list: (project: string) =>
       dataGet<{ response: BubbleList<CartItem> }>(
-        `/get_cart_items?project=${project}`
+        `/get_cart_items?project=${project}`,
       ),
 
     /** DELETE via POST /wf/remove-from-cart */
@@ -545,22 +576,22 @@ export const api = {
   portfolio: {
     list: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_portfolio"
+        "/get_portfolio",
       );
     },
     laminate_color: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_carpentry_external_colors"
+        "/get_carpentry_external_colors",
       );
     },
     sample_products: () => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        "/get_sample_products"
+        "/get_sample_products",
       );
     },
     single: (id: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
-        `/get_a_portfolio?id=${id}`
+        `/get_a_portfolio?id=${id}`,
       );
     },
   },
@@ -569,10 +600,10 @@ export const api = {
       amount: number,
       email: string,
       receipt: string,
-      redirectUrl: string
+      redirectUrl: string,
     ) => {
       return dataGet<{ response: { result: any } }>(
-        `/make-payment?amount=${amount}&email=${email}&reference=${receipt}&redirect_url=${redirectUrl}`
+        `/make-payment?amount=${amount}&email=${email}&reference=${receipt}&redirect_url=${redirectUrl}`,
       );
     },
   },
