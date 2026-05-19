@@ -999,6 +999,88 @@ function OrderDetailPanel({
   const [savingAssign, setSavingAssign] = useState(false);
   const [unassigning, setUnassigning] = useState<string | null>(null);
   const [showInvoice, setShowInvoice] = useState(false);
+  const [invoiceRooms, setInvoiceRooms] = useState<any[]>([]);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
+
+  async function handleShowInvoice() {
+    setShowInvoice(true);
+    if (invoiceRooms.length > 0) return;
+    setLoadingInvoice(true);
+    try {
+      const [cartRes, roomRes, colorRes, handleRes, alumRes, typeRes, productRes] =
+        await Promise.all([
+          api.cart.list(order._id),
+          api.rooms.listByProject(order._id),
+          api.portfolio.laminate_color(),
+          api.products.get_handle_design(),
+          api.products.get_aluminium_finishing(),
+          api.series.list(),
+          api.products.get_all_products(),
+        ]);
+
+      const cartItems: any[] = cartRes.response.results ?? [];
+      const cartRooms: any[] = roomRes.response.results ?? [];
+      const colors: any[] = colorRes.response.results ?? [];
+      const handleDesigns: any[] = handleRes.response.results ?? [];
+      const aluminium: any[] = alumRes.response.results ?? [];
+      const typeList: any[] = typeRes.response.results ?? [];
+      const productList: any[] = productRes.response.results ?? [];
+
+      const cartItemIdSet = new Set(cartItems.map((p: any) => p._id));
+      const typeMap = Object.fromEntries(typeList.map((t: any) => [t._id, t]));
+      const colorMap = Object.fromEntries(colors.map((c: any) => [c._id, c]));
+      const handleMap = Object.fromEntries(handleDesigns.map((h: any) => [h._id, h]));
+      const finishMap = Object.fromEntries(aluminium.map((a: any) => [a._id, a]));
+      const productMap = Object.fromEntries(cartItems.map((p: any) => [p._id, p]));
+      const pricingMap = Object.fromEntries(productList.map((p: any) => [p._id, p]));
+      const smallWidths = ["L400mm", "L450mm", "L500mm"];
+
+      const resolved = cartRooms
+        .map((room: any) => {
+          const products = (room.items ?? [])
+            .filter((id: string) => cartItemIdSet.has(id))
+            .map((id: string) => productMap[id])
+            .filter(Boolean)
+            .map((p: any) => {
+              const pricing = pricingMap[p.item];
+              const typeData = typeMap[p.type];
+              const isSmall = smallWidths.includes(pricing?.length);
+              const sketchImage = typeData
+                ? isSmall
+                  ? typeData.sketchSmall
+                  : typeData.sketchBig
+                : null;
+              return {
+                _id: p._id,
+                code: typeData?.code ?? null,
+                cost: p.cost ?? 0,
+                sketchImage,
+                internal_color: p.internal_color ?? null,
+                laminate_color: colorMap[p.external_color]?.colorDisplayName ?? null,
+                led_light_text: p.led_light_text ?? null,
+                width: pricing?.length ?? null,
+                door_type: p.door_type ?? null,
+                side_panel_text: p.side_panel_text ?? null,
+                handle_design: handleMap[p.handle_design_text]?.name ?? null,
+                door_finishing: finishMap[p.selected_aluminium_doorType]?.name ?? null,
+              };
+            });
+          return {
+            id: room._id,
+            name: room.name,
+            products,
+            sketchImages: products.map((p: any) => p.sketchImage).filter(Boolean),
+          };
+        })
+        .filter((r: any) => r.products.length > 0);
+
+      setInvoiceRooms(resolved);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingInvoice(false);
+    }
+  }
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -1100,9 +1182,16 @@ function OrderDetailPanel({
   ];
 
   if (showInvoice) {
+    if (loadingInvoice) {
+      return (
+        <div className="min-h-screen bg-[#faf4e6] flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-[#1C1B1F] border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
     return (
       <InvoicePage
-        order={{ ...order, rooms: [] }}
+        order={{ ...order, rooms: invoiceRooms }}
         onBack={() => setShowInvoice(false)}
       />
     );
@@ -1135,7 +1224,7 @@ function OrderDetailPanel({
           <div className="flex items-center gap-2 flex-wrap">
             <button
               className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg font-['Poppins'] text-xs text-[#555] hover:border-gray-400 transition"
-              onClick={() => setShowInvoice(true)}
+              onClick={handleShowInvoice}
             >
               <svg
                 className="w-3.5 h-3.5"

@@ -144,6 +144,8 @@ function formatConfig(
     "handle_design_text",
     "external_color",
     "selected_aluminium_doorType",
+    "sketchImage",
+    "renderImage",
   ]);
   return Object.entries(config)
     .filter(
@@ -307,47 +309,7 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
   );
 }
 
-// ─── JIA Logo ─────────────────────────────────────────────────────────────────
 
-function JIALogo() {
-  return (
-    <div className="w-[68px] h-[68px] border-2 border-[#1C1B1F] rounded-xl flex items-center justify-center bg-white">
-      <svg viewBox="0 0 60 60" className="w-12 h-12" fill="none">
-        <rect
-          x="3"
-          y="3"
-          width="54"
-          height="54"
-          rx="8"
-          stroke="#1C1B1F"
-          strokeWidth="3"
-          fill="white"
-        />
-        <rect
-          x="10"
-          y="10"
-          width="40"
-          height="40"
-          rx="5"
-          stroke="#1C1B1F"
-          strokeWidth="1.5"
-          fill="white"
-        />
-        <text
-          x="30"
-          y="35"
-          textAnchor="middle"
-          fontSize="14"
-          fontWeight="700"
-          fill="#1C1B1F"
-          fontFamily="Poppins, sans-serif"
-        >
-          JIA
-        </text>
-      </svg>
-    </div>
-  );
-}
 
 // ─── ORDER DETAILS PAGE ───────────────────────────────────────────────────────
 // Uses the exact same data-resolution pipeline as the cart page:
@@ -369,6 +331,7 @@ function OrderDetailsPage({
   const [handleDesigns, setHandleDesigns] = useState<any[]>([]);
   const [aluminium, setAluminium] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"invoice" | "do">("invoice");
 
   useEffect(() => {
     setLoading(true);
@@ -479,12 +442,40 @@ function OrderDetailsPage({
     })
     .filter((room: any) => room.products.length > 0);
 
-  // ── Pricing totals ─────────────────────────────────────────────────────────
-  const total = order.paidAmount ?? 0;
-  const subtotal = order.subtotal ?? total / 0.8; // derive if not stored
-  const discount = order.discount ?? subtotal - total;
-
   // ── Render ─────────────────────────────────────────────────────────────────
+  const tableItems = roomsForUI
+    .flatMap((room: any) =>
+      room.products.map((p: any) => ({
+        room: room.name,
+        item: `Type ${p.code}`,
+        description: formatConfig(p)
+          .map(
+            (e: { label: string; value: string }) => `${e.label}: ${e.value}`,
+          )
+          .join("\n"),
+        qty: 1,
+        amount: p.cost ?? p.price ?? 0,
+      })),
+    )
+    .map((item: any, i: number) => ({ ...item, no: i + 1 }));
+
+  const itemsSubtotal = tableItems.reduce(
+    (s: number, i: any) => s + i.amount,
+    0,
+  );
+  const paidAmount = order.paidAmount ?? 0;
+  const amountDue = Math.max(0, itemsSubtotal - paidAmount);
+  const docDate = formatDate(order["Created Date"]) || "";
+  const billingAddress =
+    [order.homeUnit, order.homeZipCode ? `S${order.homeZipCode}` : ""]
+      .filter(Boolean)
+      .join(", ") || "-";
+  const deliveryAddress = order.deliverySameAsProperty
+    ? billingAddress
+    : [order.unit, order.postalCode ? `S${order.postalCode}` : ""]
+        .filter(Boolean)
+        .join(", ") || billingAddress;
+
   return (
     <div className="min-h-screen bg-[#faf4e6]">
       {/* Header */}
@@ -515,199 +506,266 @@ function OrderDetailsPage({
       </header>
 
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-4">
-        {/* Status */}
-        <div className="flex justify-end">
+        {/* Controls row: view toggle + status badge */}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1 bg-white border border-gray-200 rounded-lg p-1">
+            {(["invoice", "do"] as const).map((v) => (
+              <button
+                key={v}
+                className={`px-4 py-1.5 rounded-md font-['Poppins'] text-sm font-medium transition ${
+                  view === v
+                    ? "bg-[#1C1B1F] text-white"
+                    : "text-[#888] hover:text-[#555]"
+                }`}
+                onClick={() => setView(v)}
+              >
+                {v === "invoice" ? "Invoice" : "Delivery Order"}
+              </button>
+            ))}
+          </div>
           <StatusBadge status={order.status} />
         </div>
 
-        {/* Invoice card */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {/* Logo + meta */}
-          <div className="p-6 border-b border-gray-100">
-            <JIALogo />
-            <div className="mt-5 space-y-1.5">
-              <div className="flex gap-3 items-baseline">
-                <span className="font-['Poppins'] text-sm text-[#888]">
-                  Order no:
-                </span>
-                <span className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                  {order.orderNo}
-                </span>
+        {/* Document card */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 md:p-8 font-['Poppins']">
+          {/* Company header */}
+          <div className="flex justify-between items-start mb-8">
+            <img
+              src="/images/logo.png"
+              alt="JIA Logo"
+              className="w-[68px] h-[68px] object-contain"
+            />
+            <div className="flex items-stretch gap-3">
+              <div className="w-[3px] bg-amber-700 rounded-sm" />
+              <div className="text-xs text-right">
+                <p className="font-bold text-sm text-[#1C1B1F]">
+                  JIA IDEAS PTE. LTD.
+                </p>
+                <p className="mt-1 text-[#555]">456 BALESTIER ROAD</p>
+                <p className="text-[#555]">#02-05, SINGAPORE 329832</p>
+                <p className="mt-0.5 text-[#555]">+65 8858 3359</p>
+                <p className="mt-0.5 text-[#555]">ENQUIRY@JIAIDEAS.COM</p>
               </div>
-              {order.invoiceNumber && (
-                <div className="flex gap-3 items-baseline">
-                  <span className="font-['Poppins'] text-sm text-[#888]">
-                    Invoice:
-                  </span>
-                  <span className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                    {order.invoiceNumber}
-                  </span>
+            </div>
+          </div>
+
+          {/* Document title */}
+          <h2 className="text-2xl font-bold underline mb-6">
+            {view === "invoice" ? "INVOICE" : "DELIVERY ORDER"}
+          </h2>
+
+          {/* Customer details + document meta */}
+          <div className="flex flex-col md:flex-row justify-between gap-6 mb-8">
+            <div className="text-sm space-y-0.5">
+              <p className="font-bold mb-2">Customer Details:</p>
+              <p>{order.fullName || "NAME"}</p>
+              <p>{order.email || "EMAIL ADDRESS"}</p>
+              <p>{order.phone || "PHONE NUMBER"}</p>
+              {view === "invoice" ? (
+                <>
+                  <div className="mt-3">
+                    <p className="underline font-medium">BILLING ADDRESS</p>
+                    <p>{billingAddress}</p>
+                  </div>
+                  <div className="mt-3">
+                    <p className="underline font-medium">DELIVERY ADDRESS</p>
+                    <p>{deliveryAddress}</p>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-3">
+                  <p className="underline font-medium">DELIVERY ADDRESS</p>
+                  <p>{deliveryAddress}</p>
                 </div>
               )}
-              {formatDate(order.installationDate) && (
-                <div className="flex gap-3 items-baseline">
-                  <span className="font-['Poppins'] text-sm text-[#888]">
-                    Delivery Date and Installation Date:
-                  </span>
-                  <span className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                    {formatDate(order.installationDate)}
-                  </span>
+            </div>
+
+            <div className="text-sm space-y-1.5">
+              {(view === "invoice"
+                ? [
+                    ["Date", docDate || "-"],
+                    ["Invoice No", order.invoiceNumber || "-"],
+                    ["Order No", order.orderNo || "-"],
+                    ["Quotation No", "-"],
+                    ["Tracking No", "-"],
+                    ["Sales Person", "Lucas Ong"],
+                  ]
+                : [
+                    ["Date", docDate || "-"],
+                    [
+                      "Delivery No",
+                      order.invoiceNumber
+                        ? `DO-${order.invoiceNumber.replace(/^INV-/, "")}`
+                        : "-",
+                    ],
+                    ["Invoice No", order.invoiceNumber || "-"],
+                    ["Tracking No", "-"],
+                    ["Sales Person", "Lucas Ong"],
+                  ]
+              ).map(([label, value]) => (
+                <div key={label} className="flex gap-2">
+                  <span className="text-[#555] w-28 shrink-0">{label}</span>
+                  <span className="text-[#1C1B1F]">: {value}</span>
                 </div>
-              )}
+              ))}
             </div>
           </div>
 
           {/* Loading state */}
           {loading && (
-            <div className="p-8 flex items-center justify-center">
+            <div className="flex items-center justify-center py-8">
               <div className="w-6 h-6 border-2 border-[#1C1B1F] border-t-transparent rounded-full animate-spin" />
-              <span className="ml-3 font-['Poppins'] text-sm text-[#888]">
+              <span className="ml-3 text-sm text-[#888]">
                 Loading order items…
               </span>
             </div>
           )}
 
-          {/* Rooms + products — same card grid as order history Figma */}
-          {!loading &&
-            roomsForUI.map((room) => (
-              <div key={room.id} className="border-b border-gray-100">
-                {/* Room name bar */}
-                <div className="px-6 py-3 bg-gray-50 border-b border-gray-100">
-                  <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                    {room.name}
-                  </p>
-                </div>
-
-                {/* Product card grid */}
-                <div className="px-6 py-5">
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {room.products.map((p: any) => {
-                      const configEntries = formatConfig(p);
-                      return (
-                        <div
-                          key={p._id}
-                          className="border border-gray-200 rounded-lg overflow-hidden"
-                        >
-                          {/* Sketch image */}
-                          <div className="bg-[#f5f5f5] h-[100px] flex items-center justify-center">
-                            {(p.sketchImage ?? room.sketchImages[0]) ? (
-                              <img
-                                alt={`Type ${p.code}`}
-                                className="w-full h-full object-contain"
-                                src={p.sketchImage ?? room.sketchImages[0]}
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-[#ebebeb]" />
-                            )}
-                          </div>
-
-                          {/* Name + price */}
-                          <div className="p-2 border-b border-gray-100 text-center">
-                            <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                              Type {p.code}
-                            </p>
-                            <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                              ${(p.cost ?? p.price ?? 0).toFixed(2)}
-                            </p>
-                          </div>
-
-                          {/* Config details */}
-                          {configEntries.length > 0 && (
-                            <div className="p-2 space-y-0.5">
-                              {configEntries.map(({ label, value }) => (
-                                <p
-                                  key={label}
-                                  className="font-['Poppins'] text-[10px] text-[#555]"
-                                >
-                                  {label}:{"  "}
-                                  <span className="text-[#888]">{value}</span>
-                                </p>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-          {/* Empty state — no rooms resolved yet (e.g. api.rooms.listByOrder missing) */}
-          {!loading && roomsForUI.length === 0 && (
-            <div className="px-6 py-8 text-center">
-              <p className="font-['Poppins'] text-sm text-[#888]">
-                Order items will appear here once room data is available.
-              </p>
+          {/* Items table */}
+          {!loading && (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <th className="border border-gray-300 px-3 py-2 text-left font-semibold bg-gray-50 w-10">
+                      No.
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 text-left font-semibold bg-gray-50 w-24">
+                      Item
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 text-left font-semibold bg-gray-50">
+                      Description
+                    </th>
+                    <th className="border border-gray-300 px-3 py-2 text-center font-semibold bg-gray-50 w-12">
+                      Qty
+                    </th>
+                    {view === "invoice" && (
+                      <th className="border border-gray-300 px-3 py-2 text-right font-semibold bg-gray-50 w-28">
+                        Amount
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableItems.map((item: any) => (
+                    <tr key={item.no}>
+                      <td className="border border-gray-300 px-3 py-4 align-top">
+                        {item.no}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-4 align-top font-medium">
+                        {item.item}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-4 align-top">
+                        <span className="block text-xs font-medium text-[#1C1B1F] mb-1">
+                          {item.room}
+                        </span>
+                        <span className="text-xs text-[#555] whitespace-pre-line">
+                          {item.description}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 px-3 py-4 align-top text-center">
+                        {item.qty}
+                      </td>
+                      {view === "invoice" && (
+                        <td className="border border-gray-300 px-3 py-4 align-top text-right">
+                          ${item.amount.toFixed(2)}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  {tableItems.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={view === "invoice" ? 5 : 4}
+                        className="border border-gray-300 px-3 py-12 text-center text-[#888]"
+                      >
+                        Order items will appear here once room data is
+                        available.
+                      </td>
+                    </tr>
+                  )}
+                  {view === "do" && (
+                    <tr>
+                      <td
+                        colSpan={2}
+                        className="border border-gray-300 px-3 py-4 align-top"
+                      >
+                        <p className="font-semibold text-sm">Remarks</p>
+                      </td>
+                      <td
+                        colSpan={2}
+                        className="border border-gray-300 px-3 py-4 align-top"
+                      >
+                        <p className="font-semibold text-sm mb-2">Notes :</p>
+                        <p className="text-xs text-[#555]">
+                          - Goods have been delivered and installed successfully
+                          in good condition.
+                        </p>
+                        <p className="text-xs text-[#555] mt-1">
+                          - All items are inspected and accepted by the customer
+                          upon signing.
+                        </p>
+                        <p className="text-xs text-[#555] mt-1">
+                          - 1-year warranty will commence from the date of
+                          customer acknowledgment and signature.
+                        </p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
 
-          {/* Pricing lines */}
-          <div className="px-6 py-5 space-y-2 border-b border-gray-100">
-            <div className="flex justify-end gap-6">
-              <span className="font-['Poppins'] text-sm text-[#555]">
-                Subtotal:
-              </span>
-              <span className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] min-w-[100px] text-right">
-                ${subtotal.toFixed(2)}
-              </span>
+          {/* Invoice totals */}
+          {!loading && view === "invoice" && (
+            <div className="flex justify-end">
+              <table className="text-sm border-collapse">
+                <tbody>
+                  <tr>
+                    <td className="border border-gray-300 px-6 py-2 text-right">
+                      Subtotal
+                    </td>
+                    <td className="border border-gray-300 px-6 py-2 text-right w-32">
+                      $ {itemsSubtotal > 0 ? itemsSubtotal.toFixed(2) : "-"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-6 py-2 text-right">
+                      Total Paid
+                    </td>
+                    <td className="border border-gray-300 px-6 py-2 text-right">
+                      $ {paidAmount > 0 ? paidAmount.toFixed(2) : "-"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-6 py-2 text-right font-bold">
+                      Amount Due
+                    </td>
+                    <td className="border border-gray-300 px-6 py-2 text-right font-bold">
+                      $ {amountDue > 0 ? amountDue.toFixed(2) : "-"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <div className="flex justify-end gap-6">
-              <span className="font-['Poppins'] text-sm text-[#555]">
-                - 20% Discount:
-              </span>
-              <span className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] min-w-[100px] text-right">
-                ${discount.toFixed(2)}
-              </span>
-            </div>
-          </div>
+          )}
 
-          {/* Total */}
-          <div className="px-6 py-4 flex justify-end gap-6">
-            <span className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
-              Total payment:
-            </span>
-            <span className="font-['Poppins'] font-bold text-base text-[#1C1B1F] min-w-[100px] text-right">
-              ${total.toFixed(2)}
-            </span>
-          </div>
-        </div>
-
-        {/* Status rows */}
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          {[
-            {
-              label: "Paid on:",
-              value: formatDate(order["Created Date"]) || "—",
-            },
-            {
-              label: "Confirmed on:",
-              value:
-                String(order.status).toLowerCase() === "confirmed"
-                  ? formatDate(order["Created Date"] ?? "") || "—"
-                  : "Pending",
-            },
-            {
-              label: "Delivery Date and Installation Date:",
-              value: formatDate(order.installationDate) || "—",
-            },
-          ].map(({ label, value }) => (
-            <div
-              key={label}
-              className="flex items-center justify-between px-6 py-4"
-            >
-              <span className="font-['Poppins'] text-sm text-[#555]">
-                {label}
-              </span>
-              <span
-                className={`font-['Poppins'] font-bold text-sm ${
-                  value === "Pending" ? "text-[#888]" : "text-[#1C1B1F]"
-                }`}
-              >
-                {value}
-              </span>
+          {/* DO signature lines */}
+          {view === "do" && (
+            <div className="flex justify-between mt-16 gap-4">
+              {[
+                "Authorised Signature",
+                "Driver's Signature",
+                "Receipient's Chop & Signature",
+              ].map((label) => (
+                <div key={label} className="flex-1 flex flex-col gap-2">
+                  <div className="border-t border-[#1C1B1F]" />
+                  <p className="text-xs text-[#555]">{label}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
 
         {/* Contact card */}
@@ -887,6 +945,7 @@ function ProductCard({
     const bPos = bi === -1 ? CONFIG_ORDER.length : bi;
     return aPos - bPos;
   });
+  console.log("product", product);
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       <div className="flex items-center gap-3 p-3">

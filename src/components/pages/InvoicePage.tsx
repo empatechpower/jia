@@ -1,5 +1,5 @@
-import { useRef } from "react";
-const Logo_White = "/images/JIA_Logo_White.png";
+import { useRef, useState } from "react";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface InvoiceProduct {
@@ -38,6 +38,10 @@ interface InvoiceOrder {
   phone?: string;
   homeZipCode?: string;
   homeUnit?: string;
+  postalCode?: string;
+  unit?: string;
+  deliverySameAsProperty?: boolean;
+  doNumber?: string;
   rooms: InvoiceRoom[];
 }
 
@@ -48,68 +52,71 @@ interface InvoicePageProps {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatDate(value?: string | number): string {
-  if (!value) return "—";
+function formatDocDate(value?: string | number): string {
+  if (!value) return "-";
   const d = new Date(value);
   if (isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("en-SG", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-SG", {
-    style: "currency",
-    currency: "SGD",
-  }).format(amount);
-}
-
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: string }) {
-  const s = status.toLowerCase();
-  const styles: Record<string, string> = {
-    confirmed: "bg-green-100 text-green-700",
-    pending: "bg-gray-100 text-gray-600",
-    in_progress: "bg-orange-100 text-orange-700",
-    completed: "bg-blue-100 text-blue-700",
-    cancelled: "bg-red-100 text-red-700",
-  };
-  const labels: Record<string, string> = {
-    confirmed: "Confirmed",
-    pending: "Pending Payment",
-    in_progress: "In Progress",
-    completed: "Completed",
-    cancelled: "Cancelled",
-  };
-  return (
-    <span
-      className={`px-3 py-1 rounded-full text-xs font-['Poppins'] font-semibold ${styles[s] ?? "bg-gray-100 text-gray-600"}`}
-    >
-      {labels[s] ?? status}
-    </span>
-  );
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function InvoicePage({ order, onBack }: InvoicePageProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState<"invoice" | "do">("invoice");
 
-  const total = order.paidAmount ?? 0;
-  const subtotal = order.subtotal ?? total / 0.8;
-  const discount = order.discount ?? subtotal - total;
-  const gst = total * 0.09;
+  // Flatten rooms/products into table rows
+  const tableItems = order.rooms
+    .flatMap((room) =>
+      room.products.map((p) => {
+        const config = [
+          p.internal_color && `Internal Color: ${p.internal_color}`,
+          p.laminate_color && `External Color: ${p.laminate_color}`,
+          p.width && `Width: ${p.width}`,
+          p.door_type && `Door Type: ${p.door_type}`,
+          p.led_light_text && `LED Light: ${p.led_light_text}`,
+          p.side_panel_text && `Side Panel: ${p.side_panel_text}`,
+        ]
+          .filter(Boolean)
+          .join("\n");
+        return {
+          room: room.name,
+          item: `Type ${p.code}`,
+          description: config,
+          qty: 1,
+          amount: p.cost,
+        };
+      }),
+    )
+    .map((item, i) => ({ ...item, no: i + 1 }));
 
-  function handlePrint() {
-    window.print();
-  }
+  const itemsSubtotal = tableItems.reduce((s, i) => s + i.amount, 0);
+  const paidAmount = order.paidAmount ?? 0;
+  const amountDue = Math.max(0, itemsSubtotal - paidAmount);
+
+  const billingAddress =
+    [order.homeUnit, order.homeZipCode ? `S${order.homeZipCode}` : ""]
+      .filter(Boolean)
+      .join(", ") || "-";
+  const deliveryAddress = order.deliverySameAsProperty
+    ? billingAddress
+    : [order.unit, order.postalCode ? `S${order.postalCode}` : ""]
+          .filter(Boolean)
+          .join(", ") || billingAddress;
+
+  const docDate = formatDocDate(order.paidOn);
+  const deliveryNo =
+    order.doNumber ||
+    (order.invoiceNumber
+      ? `DO-${order.invoiceNumber.replace(/^INV-/, "")}`
+      : "-");
 
   return (
     <div className="min-h-screen bg-[#faf4e6]">
-      {/* ── Toolbar — hidden on print ── */}
+      {/* Toolbar */}
       <header className="bg-white border-b border-gray-100 px-4 md:px-8 py-4 flex items-center justify-between print:hidden sticky top-0 z-20">
         <button
           className="flex items-center gap-1.5 text-[#1C1B1F] hover:opacity-70 transition font-['Poppins'] text-sm font-medium"
@@ -131,13 +138,25 @@ export default function InvoicePage({ order, onBack }: InvoicePageProps) {
           Back
         </button>
 
-        <h1 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
-          Invoice
-        </h1>
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          {(["invoice", "do"] as const).map((v) => (
+            <button
+              key={v}
+              className={`px-4 py-1.5 rounded-md font-['Poppins'] text-sm font-medium transition ${
+                view === v
+                  ? "bg-[#1C1B1F] text-white"
+                  : "text-[#888] hover:text-[#555]"
+              }`}
+              onClick={() => setView(v)}
+            >
+              {v === "invoice" ? "Invoice" : "Delivery Order"}
+            </button>
+          ))}
+        </div>
 
         <button
           className="flex items-center gap-2 px-4 py-2 bg-[#1C1B1F] hover:bg-[#333] transition rounded-lg font-['Poppins'] font-medium text-sm text-white"
-          onClick={handlePrint}
+          onClick={() => window.print()}
         >
           <svg
             className="w-4 h-4"
@@ -156,265 +175,235 @@ export default function InvoicePage({ order, onBack }: InvoicePageProps) {
         </button>
       </header>
 
-      {/* ── Invoice document ── */}
-      <div className="max-w-3xl mx-auto px-4 md:px-8 py-8">
+      {/* Document */}
+      <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
         <div
           ref={printRef}
-          className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm print:shadow-none print:rounded-none print:border-0"
+          className="bg-white rounded-xl border border-gray-200 p-6 md:p-8 font-['Poppins'] print:shadow-none print:rounded-none print:border-0"
         >
-          {/* Header band */}
-          <div className="bg-[#332e28] px-8 py-6 flex items-start justify-between">
-            {/* Logo */}
-            <div>
-              <img src={Logo_White} alt="JIA Logo" className="w-12 h-12" />
-
-              <p className="font-['Poppins'] font-bold text-white text-lg">
-                JIA Ideas
-              </p>
-              <p className="font-['Poppins'] text-white/70 text-xs mt-0.5">
-                Complete design &amp; renovation services
-              </p>
-            </div>
-
-            {/* Invoice title + status */}
-            <div className="text-right">
-              <p className="font-['Poppins'] font-bold text-white text-2xl mb-1">
-                INVOICE
-              </p>
-              <p className="font-['Poppins'] text-white/80 text-sm">
-                {order.invoiceNumber}
-              </p>
-              <div className="mt-2">
-                <StatusBadge status={order.status} />
+          {/* Company header */}
+          <div className="flex justify-between items-start mb-8">
+            <img
+              src="/images/logo.png"
+              alt="JIA Logo"
+              className="w-[68px] h-[68px] object-contain"
+            />
+            <div className="flex items-stretch gap-3">
+              <div className="w-[3px] bg-amber-700 rounded-sm" />
+              <div className="text-xs text-right">
+                <p className="font-bold text-sm text-[#1C1B1F]">
+                  JIA IDEAS PTE. LTD.
+                </p>
+                <p className="mt-1 text-[#555]">456 BALESTIER ROAD</p>
+                <p className="text-[#555]">#02-05, SINGAPORE 329832</p>
+                <p className="mt-0.5 text-[#555]">+65 8858 3359</p>
+                <p className="mt-0.5 text-[#555]">ENQUIRY@JIAIDEAS.COM</p>
               </div>
             </div>
           </div>
 
-          {/* Order meta */}
-          <div className="px-8 py-6 border-b border-gray-100">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-              <div>
-                <p className="font-['Poppins'] text-xs text-[#888] uppercase tracking-wider mb-1">
-                  Order No
-                </p>
-                <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                  {order.orderNo}
-                </p>
-              </div>
-              <div>
-                <p className="font-['Poppins'] text-xs text-[#888] uppercase tracking-wider mb-1">
-                  Invoice No
-                </p>
-                <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                  {order.invoiceNumber}
-                </p>
-              </div>
-              <div>
-                <p className="font-['Poppins'] text-xs text-[#888] uppercase tracking-wider mb-1">
-                  Payment Date
-                </p>
-                <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                  {formatDate(order.paidOn)}
-                </p>
-              </div>
-              <div>
-                <p className="font-['Poppins'] text-xs text-[#888] uppercase tracking-wider mb-1">
-                  Installation Date
-                </p>
-                <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                  {formatDate(order.installationDate)}
-                </p>
-              </div>
-              <div>
-                <p className="font-['Poppins'] text-xs text-[#888] uppercase tracking-wider mb-1">
-                  Confirmed On
-                </p>
-                <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                  {formatDate(order.confirmedOn)}
-                </p>
-              </div>
+          {/* Document title */}
+          <h2 className="text-2xl font-bold underline mb-6">
+            {view === "invoice" ? "INVOICE" : "DELIVERY ORDER"}
+          </h2>
+
+          {/* Customer details + document meta */}
+          <div className="flex flex-col md:flex-row justify-between gap-6 mb-8">
+            <div className="text-sm space-y-0.5">
+              <p className="font-bold mb-2">Customer Details:</p>
+              <p>{order.fullName || "NAME"}</p>
+              <p>{order.email || "EMAIL ADDRESS"}</p>
+              <p>{order.phone || "PHONE NUMBER"}</p>
+              {view === "invoice" ? (
+                <>
+                  <div className="mt-3">
+                    <p className="underline font-medium">BILLING ADDRESS</p>
+                    <p>{billingAddress}</p>
+                  </div>
+                  <div className="mt-3">
+                    <p className="underline font-medium">DELIVERY ADDRESS</p>
+                    <p>{deliveryAddress}</p>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-3">
+                  <p className="underline font-medium">DELIVERY ADDRESS</p>
+                  <p>{deliveryAddress}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="text-sm space-y-1.5">
+              {(view === "invoice"
+                ? [
+                    ["Date", docDate],
+                    ["Invoice No", order.invoiceNumber || "-"],
+                    ["Order No", order.orderNo || "-"],
+                    ["Quotation No", "-"],
+                    ["Tracking No", "-"],
+                    ["Sales Person", "Lucas Ong"],
+                  ]
+                : [
+                    ["Date", docDate],
+                    ["Delivery No", deliveryNo],
+                    ["Invoice No", order.invoiceNumber || "-"],
+                    ["Tracking No", "-"],
+                    ["Sales Person", "Lucas Ong"],
+                  ]
+              ).map(([label, value]) => (
+                <div key={label} className="flex gap-2">
+                  <span className="text-[#555] w-28 shrink-0">{label}</span>
+                  <span className="text-[#1C1B1F]">: {value}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Bill to */}
-          {(order.fullName || order.email) && (
-            <div className="px-8 py-5 border-b border-gray-100 bg-gray-50">
-              <p className="font-['Poppins'] text-xs text-[#888] uppercase tracking-wider mb-3">
-                Bill To
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                {order.fullName && (
-                  <div>
-                    <p className="font-['Poppins'] text-xs text-[#888] mb-0.5">
-                      Name
-                    </p>
-                    <p className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
-                      {order.fullName}
-                    </p>
-                  </div>
+          {/* Items table */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold bg-gray-50 w-10">
+                    No.
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold bg-gray-50 w-24">
+                    Item
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold bg-gray-50">
+                    Description
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-center font-semibold bg-gray-50 w-12">
+                    Qty
+                  </th>
+                  {view === "invoice" && (
+                    <th className="border border-gray-300 px-3 py-2 text-right font-semibold bg-gray-50 w-28">
+                      Amount
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {tableItems.map((item) => (
+                  <tr key={item.no}>
+                    <td className="border border-gray-300 px-3 py-4 align-top">
+                      {item.no}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-4 align-top font-medium">
+                      {item.item}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-4 align-top">
+                      <span className="block text-xs font-medium text-[#1C1B1F] mb-1">
+                        {item.room}
+                      </span>
+                      <span className="text-xs text-[#555] whitespace-pre-line">
+                        {item.description}
+                      </span>
+                    </td>
+                    <td className="border border-gray-300 px-3 py-4 align-top text-center">
+                      {item.qty}
+                    </td>
+                    {view === "invoice" && (
+                      <td className="border border-gray-300 px-3 py-4 align-top text-right">
+                        ${item.amount.toFixed(2)}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                {tableItems.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={view === "invoice" ? 5 : 4}
+                      className="border border-gray-300 px-3 py-12 text-center text-[#888]"
+                    >
+                      No items found.
+                    </td>
+                  </tr>
                 )}
-                {order.email && (
-                  <div>
-                    <p className="font-['Poppins'] text-xs text-[#888] mb-0.5">
-                      Email
-                    </p>
-                    <p className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
-                      {order.email}
-                    </p>
-                  </div>
+                {view === "do" && (
+                  <tr>
+                    <td
+                      colSpan={2}
+                      className="border border-gray-300 px-3 py-4 align-top"
+                    >
+                      <p className="font-semibold text-sm">Remarks</p>
+                    </td>
+                    <td
+                      colSpan={2}
+                      className="border border-gray-300 px-3 py-4 align-top"
+                    >
+                      <p className="font-semibold text-sm mb-2">Notes :</p>
+                      <p className="text-xs text-[#555]">
+                        - Goods have been delivered and installed successfully in
+                        good condition.
+                      </p>
+                      <p className="text-xs text-[#555] mt-1">
+                        - All items are inspected and accepted by the customer
+                        upon signing.
+                      </p>
+                      <p className="text-xs text-[#555] mt-1">
+                        - 1-year warranty will commence from the date of customer
+                        acknowledgment and signature.
+                      </p>
+                    </td>
+                  </tr>
                 )}
-                {order.phone && (
-                  <div>
-                    <p className="font-['Poppins'] text-xs text-[#888] mb-0.5">
-                      Phone
-                    </p>
-                    <p className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
-                      {order.phone}
-                    </p>
-                  </div>
-                )}
-                {order.homeZipCode && (
-                  <div>
-                    <p className="font-['Poppins'] text-xs text-[#888] mb-0.5">
-                      Address
-                    </p>
-                    <p className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
-                      {order.homeUnit ? `${order.homeUnit}, ` : ""}
-                      {order.homeZipCode}
-                    </p>
-                  </div>
-                )}
-              </div>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Invoice totals */}
+          {view === "invoice" && (
+            <div className="flex justify-end">
+              <table className="text-sm border-collapse">
+                <tbody>
+                  <tr>
+                    <td className="border border-gray-300 px-6 py-2 text-right">
+                      Subtotal
+                    </td>
+                    <td className="border border-gray-300 px-6 py-2 text-right w-32">
+                      $ {itemsSubtotal > 0 ? itemsSubtotal.toFixed(2) : "-"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-6 py-2 text-right">
+                      Total Paid
+                    </td>
+                    <td className="border border-gray-300 px-6 py-2 text-right">
+                      $ {paidAmount > 0 ? paidAmount.toFixed(2) : "-"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-6 py-2 text-right font-bold">
+                      Amount Due
+                    </td>
+                    <td className="border border-gray-300 px-6 py-2 text-right font-bold">
+                      $ {amountDue > 0 ? amountDue.toFixed(2) : "-"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           )}
 
-          {/* Line items */}
-          <div className="px-8 py-5">
-            <p className="font-['Poppins'] text-xs text-[#888] uppercase tracking-wider mb-4">
-              Order Items
-            </p>
-
-            {/* Table header */}
-            <div className="grid grid-cols-[1fr_80px_80px] gap-4 pb-2 border-b border-gray-200 mb-2">
-              <p className="font-['Poppins'] text-xs font-semibold text-[#888]">
-                Description
-              </p>
-              <p className="font-['Poppins'] text-xs font-semibold text-[#888] text-right">
-                Qty
-              </p>
-              <p className="font-['Poppins'] text-xs font-semibold text-[#888] text-right">
-                Amount
-              </p>
+          {/* DO signature lines */}
+          {view === "do" && (
+            <div className="flex justify-between mt-16 gap-4">
+              {[
+                "Authorised Signature",
+                "Driver's Signature",
+                "Receipient's Chop & Signature",
+              ].map((label) => (
+                <div key={label} className="flex-1 flex flex-col gap-2">
+                  <div className="border-t border-[#1C1B1F]" />
+                  <p className="text-xs text-[#555]">{label}</p>
+                </div>
+              ))}
             </div>
-
-            {/* Rooms + products */}
-            {order.rooms.map((room) => (
-              <div key={room.id} className="mb-4">
-                {/* Room header */}
-                <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] py-2 border-b border-gray-100">
-                  {room.name}
-                </p>
-
-                {/* Products */}
-                {room.products.map((p) => (
-                  <div
-                    key={p._id}
-                    className="grid grid-cols-[1fr_80px_80px] gap-4 py-3 border-b border-gray-50 items-start"
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Sketch thumbnail */}
-                      <div className="w-10 h-12 shrink-0 border border-gray-200 rounded-lg bg-[#f5f5f5] overflow-hidden">
-                        {(p.sketchImage ?? room.sketchImages[0]) ? (
-                          <img
-                            alt={`Type ${p.code}`}
-                            className="w-full h-full object-contain"
-                            src={
-                              (
-                                p.sketchImage ?? room.sketchImages[0]
-                              )?.startsWith("http")
-                                ? (p.sketchImage ?? room.sketchImages[0])
-                                : `https:${p.sketchImage ?? room.sketchImages[0]}`
-                            }
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-[#ebebeb]" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
-                          Type {p.code}
-                        </p>
-                        {/* Config summary */}
-                        <div className="mt-0.5 space-y-0.5">
-                          {[
-                            ["Color", p.internal_color],
-                            ["Laminate", p.laminate_color],
-                            ["Width", p.width],
-                            ["Door", p.door_type],
-                          ]
-                            .filter(([, v]) => v && typeof v === "string")
-                            .map(([label, value]) => (
-                              <p
-                                key={label}
-                                className="font-['Poppins'] text-[10px] text-[#888]"
-                              >
-                                {label}: {value}
-                              </p>
-                            ))}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="font-['Poppins'] text-sm text-[#555] text-right">
-                      1
-                    </p>
-                    <p className="font-['Poppins'] font-medium text-sm text-[#1C1B1F] text-right">
-                      {formatCurrency(p.cost)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          {/* Totals */}
-          <div className="px-8 pb-6">
-            <div className="ml-auto max-w-xs space-y-2 border-t border-gray-200 pt-4">
-              <div className="flex justify-between font-['Poppins'] text-sm text-[#555]">
-                <span>Subtotal</span>
-                <span>{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="flex justify-between font-['Poppins'] text-sm text-[#555]">
-                <span>20% Discount</span>
-                <span>−{formatCurrency(discount)}</span>
-              </div>
-              <div className="flex justify-between font-['Poppins'] text-sm text-[#555]">
-                <span>GST (9%)</span>
-                <span>{formatCurrency(gst)}</span>
-              </div>
-              <div className="flex justify-between font-['Poppins'] font-bold text-base text-[#1C1B1F] border-t border-gray-200 pt-3 mt-2">
-                <span>Total Paid</span>
-                <span>{formatCurrency(total)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="bg-gray-50 border-t border-gray-100 px-8 py-5 text-center">
-            <p className="font-['Poppins'] text-xs text-[#888]">
-              Thank you for choosing JIA Ideas. For enquiries, contact us at{" "}
-              <span className="text-[#1C1B1F] font-medium">
-                info@jiaideas.com
-              </span>
-            </p>
-            <p className="font-['Poppins'] text-xs text-[#bbb] mt-1">
-              This is a computer-generated invoice and does not require a
-              signature.
-            </p>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Print styles */}
       <style>{`
         @media print {
           body { background: white; }
