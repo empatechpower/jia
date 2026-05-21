@@ -1911,6 +1911,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
   const [filterStatus, setFilterStatus] = useState("all");
   const [assigningRole, setAssigningRole] = useState<string | null>(null);
   const [roleValue, setRoleValue] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
 
   useEffect(() => {
     setLoading(true);
@@ -2207,16 +2208,29 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
 
               {activeTab === "users" && (
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-4 flex-wrap">
                     <h2 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
                       Registered Users{" "}
                       <span className="text-[#888] font-normal">
-                        ({users.length})
+                        ({userRoleFilter === "all" ? users.length : users.filter((u) => (u.userRole || "customer") === userRoleFilter).length})
                       </span>
                     </h2>
-                    <p className="font-['Poppins'] text-xs text-[#888]">
-                      Assign roles to grant portal access
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <select
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 font-['Poppins'] text-xs text-[#1C1B1F] outline-none focus:ring-2 focus:ring-[#1C1B1F]"
+                        value={userRoleFilter}
+                        onChange={(e) => setUserRoleFilter(e.target.value)}
+                      >
+                        <option value="all">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="salesperson">Salesperson</option>
+                        <option value="vendor">Vendor</option>
+                        <option value="customer">Customer</option>
+                      </select>
+                      <p className="font-['Poppins'] text-xs text-[#888]">
+                        Assign roles to grant portal access
+                      </p>
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -2240,7 +2254,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {users.map((user) => {
+                        {users.filter((u) => userRoleFilter === "all" || (u.userRole || "customer") === userRoleFilter).map((user) => {
                           const name = user.FirstName
                             ? `${user.FirstName} ${user.LastName || ""}`.trim()
                             : "—";
@@ -2346,7 +2360,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                         })}
                       </tbody>
                     </table>
-                    {users.length === 0 && (
+                    {users.filter((u) => userRoleFilter === "all" || (u.userRole || "customer") === userRoleFilter).length === 0 && (
                       <div className="py-12 text-center">
                         <p className="font-['Poppins'] text-sm text-[#bbb]">
                           No users found
