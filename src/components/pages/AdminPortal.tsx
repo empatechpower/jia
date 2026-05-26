@@ -29,6 +29,7 @@ interface BubbleOrder {
   assignedToNames?: string[];
   doNumber?: string;
   imageLibrary?: string[];
+  siteVisitDate?: string;
 }
 
 interface BubbleUser {
@@ -628,14 +629,21 @@ function OrderItems({ order }: { order: BubbleOrder }) {
 function ConfirmStatusModal({
   currentStatus,
   newStatus,
+  siteVisitDate,
+  onSiteVisitDateChange,
   onConfirm,
   onCancel,
 }: {
   currentStatus: string;
   newStatus: string;
+  siteVisitDate?: string;
+  onSiteVisitDateChange?: (date: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const isSiteVisit = newStatus === "Site Visit";
+  const confirmDisabled = isSiteVisit && !siteVisitDate;
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
@@ -673,9 +681,27 @@ function ConfirmStatusModal({
             ?
           </p>
         </div>
+        {isSiteVisit && (
+          <div className="space-y-1.5">
+            <label className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">
+              Site Visit Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 font-['Poppins'] text-sm text-[#1C1B1F] outline-none focus:ring-2 focus:ring-[#1C1B1F]"
+              value={siteVisitDate ?? ""}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={(e) => onSiteVisitDateChange?.(e.target.value)}
+            />
+            <p className="font-['Poppins'] text-xs text-[#888]">
+              Select the date for the site visit appointment.
+            </p>
+          </div>
+        )}
         <div className="flex flex-col gap-2 pt-1">
           <button
-            className="w-full bg-[#1C1B1F] hover:bg-[#333] active:scale-95 transition py-3 rounded-xl font-['Poppins'] font-semibold text-base text-white"
+            className="w-full bg-[#1C1B1F] hover:bg-[#333] active:scale-95 transition py-3 rounded-xl font-['Poppins'] font-semibold text-base text-white disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={confirmDisabled}
             onClick={onConfirm}
           >
             Yes, Update Status
@@ -980,12 +1006,13 @@ function OrderDetailPanel({
 }: {
   order: BubbleOrder;
   onBack: () => void;
-  onStatusChange: (id: string, status: string) => Promise<void>;
+  onStatusChange: (id: string, status: string, siteVisitDate?: string) => Promise<void>;
   salespersons?: BubbleSalesperson[];
   isAdmin?: boolean;
 }) {
   const [updating, setUpdating] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [siteVisitDate, setSiteVisitDate] = useState("");
   const [assignedList, setAssignedList] = useState<string[]>(
     order.assignedToList ?? (order.assignedTo ? [order.assignedTo] : []),
   );
@@ -1106,9 +1133,10 @@ function OrderDetailPanel({
 
   async function handle(status: string) {
     setUpdating(true);
-    await onStatusChange(order._id, status);
+    await onStatusChange(order._id, status, status === "Site Visit" ? siteVisitDate : undefined);
     setUpdating(false);
     setPendingStatus(null);
+    setSiteVisitDate("");
   }
 
   async function handleAssign() {
@@ -1472,8 +1500,10 @@ function OrderDetailPanel({
         <ConfirmStatusModal
           currentStatus={order.paidStatus as string}
           newStatus={pendingStatus}
+          siteVisitDate={siteVisitDate}
+          onSiteVisitDateChange={setSiteVisitDate}
           onConfirm={() => handle(pendingStatus)}
-          onCancel={() => setPendingStatus(null)}
+          onCancel={() => { setPendingStatus(null); setSiteVisitDate(""); }}
         />
       )}
 
@@ -1930,12 +1960,12 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleStatusChange(id: string, status: string) {
-    await api.admin.updateOrderStatus(id, status);
+  async function handleStatusChange(id: string, status: string, siteVisitDate?: string) {
+    await api.admin.updateOrderStatus(id, status, siteVisitDate);
     setOrders((p) =>
-      p.map((o) => (o._id === id ? { ...o, paidStatus: status } : o)),
+      p.map((o) => (o._id === id ? { ...o, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : o)),
     );
-    setSelectedOrder((p) => (p ? { ...p, paidStatus: status } : null));
+    setSelectedOrder((p) => (p ? { ...p, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : null));
   }
 
   async function handleAssignRole(userId: string, role: string) {
@@ -2397,12 +2427,12 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleStatusChange(id: string, status: string) {
-    await api.admin.updateOrderStatus(id, status);
+  async function handleStatusChange(id: string, status: string, siteVisitDate?: string) {
+    await api.admin.updateOrderStatus(id, status, siteVisitDate);
     setOrders((p) =>
-      p.map((o) => (o._id === id ? { ...o, paidStatus: status } : o)),
+      p.map((o) => (o._id === id ? { ...o, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : o)),
     );
-    setSelectedOrder((p) => (p ? { ...p, paidStatus: status } : null));
+    setSelectedOrder((p) => (p ? { ...p, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : null));
   }
 
   return (

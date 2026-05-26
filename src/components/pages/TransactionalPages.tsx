@@ -1719,7 +1719,7 @@ export function CheckoutPage() {
     form.agreedToTerms &&
     form.siteVisitAcknowledged &&
     form.installationDate &&
-    (!form.deliverySameAsProperty ||
+    (form.deliverySameAsProperty ||
       form.deliveryPostalCode.trim().length > 0) &&
     form.homeZipCode.trim().length > 0 &&
     form.homeUnit.trim().length > 0;

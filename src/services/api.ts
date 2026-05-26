@@ -290,10 +290,11 @@ export const api = {
     listAssignedOrders: () =>
       dataGet<{ response: BubbleList<any> }>("/get_assigned_orders"),
 
-    updateOrderStatus: (orderId: string, status: string) =>
+    updateOrderStatus: (orderId: string, status: string, siteVisitDate?: string) =>
       request<void>("POST", "/update-order-status", {
         order_id: orderId,
         status,
+        ...(siteVisitDate ? { site_visit_date: siteVisitDate } : {}),
       }),
 
     listUsers: () => dataGet<{ response: BubbleList<any> }>("/get_all_users"),
