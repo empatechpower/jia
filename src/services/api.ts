@@ -290,7 +290,11 @@ export const api = {
     listAssignedOrders: () =>
       dataGet<{ response: BubbleList<any> }>("/get_assigned_orders"),
 
-    updateOrderStatus: (orderId: string, status: string, siteVisitDate?: string) =>
+    updateOrderStatus: (
+      orderId: string,
+      status: string,
+      siteVisitDate?: string,
+    ) =>
       request<void>("POST", "/update-order-status", {
         order_id: orderId,
         status,
@@ -447,9 +451,19 @@ export const api = {
         "/get_carpentry_category",
       );
     },
+    get_kitchen_category: () => {
+      return dataGet<{ response: BubbleList<PortfolioProject> }>(
+        "/get_kitchen_category",
+      );
+    },
     get_type: (category: string) => {
       return dataGet<{ response: BubbleList<PortfolioProject> }>(
         `/get_carpentry_type?category=${category}`,
+      );
+    },
+    get_kitchen_type: (category: string) => {
+      return dataGet<{ response: BubbleList<PortfolioProject> }>(
+        `/get_kitchen_type?category=${category}`,
       );
     },
     get_a_type: (category: string) => {

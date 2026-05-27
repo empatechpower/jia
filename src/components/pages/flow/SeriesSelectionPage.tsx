@@ -8,16 +8,6 @@ import { CartIconWithBadge } from "@/assets/icons";
 import { useEffect, useState } from "react";
 import { api } from "@/services/api";
 
-// Series data lives here or in a data file — move to /data/series.ts when it grows.
-
-const KITCHEN_SERIES = [
-  { id: "bottom-cabinet", label: "Bottom Cabinet" },
-  { id: "tall-cabinet", label: "Tall Cabinet" },
-  { id: "wardrobe", label: "Wardrobe" },
-  { id: "top-hung-cabinet", label: "Top Hung Cabinet" },
-  { id: "tall-storage-module", label: "Tall Storage Module" },
-];
-
 export default function SeriesSelectionPage() {
   const {
     selectedArea,
@@ -27,21 +17,22 @@ export default function SeriesSelectionPage() {
     navigateTo,
     cartItemCount,
   } = useApp();
-  const [categories, setCategories] = useState<any | null>(null);
-
-  const series = selectedArea === "kitchen" ? KITCHEN_SERIES : categories;
+  const [series, setSeries] = useState<any | null>(null);
   const [, setLoading] = useState(true);
 
   useEffect(() => {
-    api.series
-      .get_category()
+    const fetch = selectedArea === "kitchen"
+      ? api.series.get_kitchen_category()
+      : api.series.get_category();
+
+    fetch
       .then((data) => {
         const project = data.response.results;
-        setCategories(project);
+        setSeries(project);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedArea]);
 
   function handleSelect(id: string) {
     setSelectedSeriesId(id);

@@ -191,6 +191,60 @@ function RoomCard({
   );
 }
 
+// ─── Duplicate-number fixer ───────────────────────────────────────────────────
+//
+// Bubble sometimes creates multiple rooms with the same name (e.g. two "Room 1")
+// due to system lag. After any fetch we run this check:
+//   • Rooms whose name appears more than once get the next available number.
+//   • api.rooms.rename is called for each fixed room so Bubble stays in sync.
+//
+async function fixDuplicateRooms(rooms: any[]): Promise<any[]> {
+  // 1. Collect every number already claimed by any room name
+  const usedNumbers = new Set<number>();
+  for (const room of rooms) {
+    const match = (room.name ?? "").match(/\d+/);
+    if (match) usedNumbers.add(Number(match[0]));
+  }
+
+  // 2. Walk rooms in order; track names we have already seen
+  const seen = new Map<string, boolean>();
+  const needsRename: { id: string; newName: string }[] = [];
+
+  const updatedRooms = rooms.map((room) => {
+    const key = (room.name ?? "").toLowerCase().trim();
+
+    if (seen.has(key)) {
+      // Duplicate — find the lowest positive integer not already in use
+      let n = 1;
+      while (usedNumbers.has(n)) n++;
+      const newName = `Room ${n}`;
+      usedNumbers.add(n);
+      needsRename.push({ id: room._id, newName });
+      return { ...room, name: newName };
+    }
+
+    seen.set(key, true);
+    return room;
+  });
+
+  // 3. Patch all duplicates in Bubble (parallel, best-effort)
+  if (needsRename.length > 0) {
+    console.log(
+      `[Rooms] Fixing ${needsRename.length} duplicate room name(s)…`,
+      needsRename,
+    );
+    await Promise.all(
+      needsRename.map(({ id, newName }) =>
+        api.rooms.rename(id, newName).catch((err) =>
+          console.warn(`[Rooms] rename ${id} → "${newName}" failed:`, err),
+        ),
+      ),
+    );
+  }
+
+  return updatedRooms;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RoomSelectionPage() {
@@ -241,9 +295,13 @@ export default function RoomSelectionPage() {
             propertyInfo.projectId ?? "",
           );
           if (!isMounted) return;
-          setRooms(updated?.response?.results ?? []);
+          const fixedAfterCreate = await fixDuplicateRooms(
+            updated?.response?.results ?? [],
+          );
+          setRooms(fixedAfterCreate);
         } else {
-          setRooms(existing);
+          const fixedExisting = await fixDuplicateRooms(existing);
+          setRooms(fixedExisting);
         }
       } catch (err) {
         console.error(err);
@@ -278,7 +336,8 @@ export default function RoomSelectionPage() {
       const updated = await api.rooms.listByProject(
         propertyInfo?.projectId ?? "",
       );
-      setRooms(updated?.response?.results ?? []);
+      const fixed = await fixDuplicateRooms(updated?.response?.results ?? []);
+      setRooms(fixed);
     } catch (err) {
       console.error(err);
     } finally {

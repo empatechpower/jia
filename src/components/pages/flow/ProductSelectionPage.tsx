@@ -28,15 +28,18 @@ export default function ProductSelectionPage() {
   }
 
   useEffect(() => {
-    api.series
-      .get_type(selectedSeriesId)
+    const fetch = selectedArea === "kitchen"
+      ? api.series.get_kitchen_type(selectedSeriesId)
+      : api.series.get_type(selectedSeriesId);
+
+    fetch
       .then((data) => {
         const project = data.response.results;
         setType(project);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [selectedSeriesId]);
+  }, [selectedArea, selectedSeriesId]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -124,7 +127,7 @@ export default function ProductSelectionPage() {
                         {photoLightSmall && (
                           <img
                             src={`https:${photoLightSmall}`}
-                            alt={`${name} photo`}
+                            alt={`${code} photo`}
                             className="w-1/2 h-full object-contain group-hover:scale-105 transition-transform duration-300"
                           />
                         )}
@@ -132,7 +135,7 @@ export default function ProductSelectionPage() {
                         {sketchSmall && (
                           <img
                             src={`https:${sketchSmall}`}
-                            alt={`${name} sketch`}
+                            alt={`${code} sketch`}
                             className="w-1/2 h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                         )}
