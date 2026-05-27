@@ -1242,6 +1242,23 @@ export default function ProductDetailsPage() {
                           }}
                         />
                       </div>
+                      <button
+                        className="self-start text-xs font-['Poppins'] font-medium px-3 py-1.5 rounded-lg border border-[#414042] text-[#414042] bg-[#f5f5f5] hover:bg-[#ebebeb] transition mb-3"
+                        onClick={() =>
+                          setLightbox({
+                            images: [
+                              {
+                                url: "/images/DRAWER-KEY-LOCK.jpeg",
+                                alt: "Drawer Key Lock",
+                              },
+                            ],
+                            index: 0,
+                          })
+                        }
+                        type="button"
+                      >
+                        View Image
+                      </button>
                       {cfg.addLock === "Yes" && (
                         <>
                           <p className="font-['Poppins'] font-bold text-sm text-[#242424] mb-2">

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/services/api";
+import { uploadFile, validateFile } from "@/services/cloudinary";
+import InvoicePage from "@/components/pages/InvoicePage";
 
 type Role = "admin" | "salesperson" | "vendor";
 
@@ -10,6 +12,7 @@ interface BubbleOrder {
   fullName: string;
   email: string;
   phone: string;
+  paidStatus?: string;
   paidAmount: number;
   status: string;
   payment_status: string;
@@ -18,9 +21,15 @@ interface BubbleOrder {
   homeZipCode?: string;
   homeUnit?: string;
   paid?: boolean;
-
   items?: string[];
   project?: string;
+  assignedTo?: string;
+  assignedToName?: string;
+  assignedToList?: string[];
+  assignedToNames?: string[];
+  doNumber?: string;
+  imageLibrary?: string[];
+  siteVisitDate?: string;
 }
 
 interface BubbleUser {
@@ -30,8 +39,18 @@ interface BubbleUser {
   LastName?: string;
   phone?: string;
   ContactNumber?: string;
+  role?: string;
+  userRole?: string;
   authentication: { email: { email: string } };
   "Created Date": number;
+}
+
+interface BubbleSalesperson {
+  _id: string;
+  email: string;
+  FirstName?: string;
+  LastName?: string;
+  role?: string;
 }
 
 interface BubbleMessage {
@@ -100,9 +119,7 @@ function timeAgo(ts: number): string {
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor(
-        status
-      )}`}
+      className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor(status)}`}
     >
       {statusLabel(status)}
     </span>
@@ -186,7 +203,6 @@ function Sidebar({
               </p>
             </div>
           </div>
-          {/* Close button — mobile only */}
           <button
             className="md:hidden p-1 text-white/60 hover:text-white transition"
             onClick={() => setMobileOpen(false)}
@@ -211,11 +227,7 @@ function Sidebar({
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition ${
-              activeTab === tab.id
-                ? "bg-white/10 text-white"
-                : "text-white/60 hover:text-white hover:bg-white/5"
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition ${activeTab === tab.id ? "bg-white/10 text-white" : "text-white/60 hover:text-white hover:bg-white/5"}`}
             onClick={() => {
               onTabChange(tab.id);
               setMobileOpen(false);
@@ -240,7 +252,6 @@ function Sidebar({
 
   return (
     <>
-      {/* ── Mobile top bar ── */}
       <div
         className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 py-3.5"
         style={{ backgroundColor: color }}
@@ -255,7 +266,6 @@ function Sidebar({
             {title}
           </p>
         </div>
-        {/* Hamburger */}
         <button
           className="p-1.5 text-white/80 hover:text-white transition"
           onClick={() => setMobileOpen(true)}
@@ -275,40 +285,30 @@ function Sidebar({
           </svg>
         </button>
       </div>
-
-      {/* ── Mobile drawer overlay ── */}
       {mobileOpen && (
         <div
           className="md:hidden fixed inset-0 z-50 bg-black/50"
           onClick={() => setMobileOpen(false)}
         />
       )}
-
-      {/* ── Mobile drawer ── */}
       <aside
-        className={`md:hidden fixed top-0 left-0 h-full w-64 z-50 flex flex-col transition-transform duration-300 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`md:hidden fixed top-0 left-0 h-full w-64 z-50 flex flex-col transition-transform duration-300 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{ backgroundColor: color }}
       >
         <NavContent />
       </aside>
-
-      {/* ── Desktop sidebar — fixed, never scrolls ── */}
       <aside
         className="hidden md:flex fixed top-0 left-0 h-screen w-56 flex-col z-30"
         style={{ backgroundColor: color }}
       >
         <NavContent />
       </aside>
-
-      {/* ── Desktop spacer — pushes main content right ── */}
       <div className="hidden md:block w-56 shrink-0" />
     </>
   );
 }
 
-// ── helpers shared with main app ──────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
 const SMALL_WIDTHS = ["L400mm", "L450mm", "L500mm"];
 
 function getSketchImg(t: any, p: any) {
@@ -322,7 +322,7 @@ function getRenderImg(t: any, p: any) {
   return isSmall ? t.photoDarkSmall : t.photoDarkBig;
 }
 function fmtConfig(
-  p: Record<string, unknown>
+  p: Record<string, unknown>,
 ): Array<{ label: string; value: string }> {
   const labelMap: Record<string, string> = {
     internal_color: "Internal Color",
@@ -366,21 +366,13 @@ function fmtConfig(
         v !== undefined &&
         typeof v !== "object" &&
         v !== "" &&
-        !skip.has(k)
+        !skip.has(k),
     )
     .map(([k, v]) => ({ label: labelMap[k], value: String(v) }));
 }
 
-function OrderDetailPanel({
-  order,
-  onBack,
-  onStatusChange,
-}: {
-  order: BubbleOrder;
-  onBack: () => void;
-  onStatusChange: (id: string, status: string) => Promise<void>;
-}) {
-  const [updating, setUpdating] = useState(false);
+// ── Shared product resolution hook ────────────────────────────────────────────
+function useOrderItems(order: BubbleOrder) {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [cartRooms, setCartRooms] = useState<any[]>([]);
   const [typeList, setTypeList] = useState<any[]>([]);
@@ -388,12 +380,11 @@ function OrderDetailPanel({
   const [colors, setColors] = useState<any[]>([]);
   const [handles, setHandles] = useState<any[]>([]);
   const [aluminium, setAluminium] = useState<any[]>([]);
-  const [itemsLoading, setItemsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  // Same 7-call pipeline as OrderDetailsPage / OrderCard in ProfilePage
   useEffect(() => {
     if (!order.project && !order._id) return;
-    setItemsLoading(true);
+    setLoading(true);
     const projectId = order.project ?? order._id;
     Promise.all([
       api.cart.list(projectId),
@@ -421,28 +412,26 @@ function OrderDetailPanel({
           setAluminium(alumRes.response.results ?? []);
           setTypeList(typeRes.response.results ?? []);
           setProductList(productRes.response.results ?? []);
-        }
+        },
       )
       .catch(console.error)
-      .finally(() => setItemsLoading(false));
+      .finally(() => setLoading(false));
   }, [order._id]);
 
-  // Same lookup maps
   const typeMap = Object.fromEntries(typeList.map((t: any) => [t._id, t]));
   const colorMap = Object.fromEntries(colors.map((c: any) => [c._id, c]));
   const handleMap = Object.fromEntries(handles.map((h: any) => [h._id, h]));
   const finishMap = Object.fromEntries(aluminium.map((a: any) => [a._id, a]));
   const productMap = Object.fromEntries(cartItems.map((p: any) => [p._id, p]));
   const pricingMap = Object.fromEntries(
-    productList.map((p: any) => [p._id, p])
+    productList.map((p: any) => [p._id, p]),
   );
   const cartItemIdSet = new Set(cartItems.map((p: any) => p._id));
 
-  // Same roomsForUI pipeline
   const roomsForUI = cartRooms
     .map((room: any) => {
       const resolvedIds = (room.items ?? []).filter((id: string) =>
-        cartItemIdSet.has(id)
+        cartItemIdSet.has(id),
       );
       const products = resolvedIds
         .map((id: string) => productMap[id])
@@ -472,17 +461,775 @@ function OrderDetailPanel({
     })
     .filter((r: any) => r.products.length > 0);
 
+  return { roomsForUI, loading };
+}
+
+// ── Product items display ─────────────────────────────────────────────────────
+function OrderItems({ order }: { order: BubbleOrder }) {
+  const { roomsForUI, loading } = useOrderItems(order);
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100">
+        <h3 className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
+          Order Items
+        </h3>
+      </div>
+      {loading && (
+        <div className="flex items-center justify-center gap-3 py-8">
+          <div className="w-5 h-5 border-2 border-[#1C1B1F] border-t-transparent rounded-full animate-spin" />
+          <span className="font-['Poppins'] text-sm text-[#888]">
+            Loading items…
+          </span>
+        </div>
+      )}
+      {!loading &&
+        roomsForUI.map((room: any) => (
+          <div key={room.id} className="border-b border-gray-100 last:border-0">
+            <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100">
+              <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
+                {room.name}
+              </p>
+            </div>
+            {room.sketchImages.length > 0 && (
+              <div className="px-5 py-3 flex gap-3 overflow-x-auto border-b border-gray-50">
+                {room.products.map((p: any) => (
+                  <div key={p._id} className="shrink-0 flex gap-2">
+                    {p.sketchImage && (
+                      <div className="w-[70px] h-[90px] border border-gray-200 rounded-lg bg-[#f5f5f5] overflow-hidden">
+                        <img
+                          alt="sketch"
+                          className="w-full h-full object-contain"
+                          src={
+                            p.sketchImage.startsWith("http")
+                              ? p.sketchImage
+                              : `https:${p.sketchImage}`
+                          }
+                        />
+                      </div>
+                    )}
+                    {p.renderImage && (
+                      <div className="w-[70px] h-[90px] border border-gray-200 rounded-lg bg-[#f5f5f5] overflow-hidden">
+                        <img
+                          alt="render"
+                          className="w-full h-full object-contain"
+                          src={
+                            p.renderImage.startsWith("http")
+                              ? p.renderImage
+                              : `https:${p.renderImage}`
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {room.products.map((p: any) => {
+                const configEntries = fmtConfig(p);
+                const src = p.sketchImage ?? room.sketchImages[0];
+                return (
+                  <div
+                    key={p._id}
+                    className="border border-gray-200 rounded-xl overflow-hidden bg-white flex gap-3 p-3"
+                  >
+                    <div className="w-[60px] h-[75px] shrink-0 rounded-lg bg-[#f5f5f5] border border-gray-100 overflow-hidden">
+                      {src ? (
+                        <img
+                          alt={`Type ${p.code}`}
+                          className="w-full h-full object-contain"
+                          src={src.startsWith("http") ? src : `https:${src}`}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[#ebebeb]" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
+                        Type {p.code}
+                      </p>
+                      <p className="font-['Poppins'] font-bold text-sm text-[#1C1B1F] mb-1.5">
+                        ${(p.cost ?? 0).toFixed(2)}
+                      </p>
+                      <div className="space-y-0.5">
+                        {configEntries.map(({ label, value }) => (
+                          <p
+                            key={label}
+                            className="font-['Poppins'] text-[10px] text-[#555]"
+                          >
+                            {label}:{" "}
+                            <span className="text-[#888]">{value}</span>
+                          </p>
+                        ))}
+                        {p.laminate_color && (
+                          <p className="font-['Poppins'] text-[10px] text-[#555]">
+                            External Color:{" "}
+                            <span className="text-[#888]">
+                              {p.laminate_color}
+                            </span>
+                          </p>
+                        )}
+                        {p.handle_design && (
+                          <p className="font-['Poppins'] text-[10px] text-[#555]">
+                            Handle:{" "}
+                            <span className="text-[#888]">
+                              {p.handle_design}
+                            </span>
+                          </p>
+                        )}
+                        {p.door_finishing && (
+                          <p className="font-['Poppins'] text-[10px] text-[#555]">
+                            Finishing:{" "}
+                            <span className="text-[#888]">
+                              {p.door_finishing}
+                            </span>
+                          </p>
+                        )}
+                        {p.pricing?.length && (
+                          <p className="font-['Poppins'] text-[10px] text-[#555]">
+                            Width:{" "}
+                            <span className="text-[#888]">
+                              {p.pricing.length}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      {!loading && roomsForUI.length === 0 && (
+        <div className="px-5 py-8 text-center">
+          <p className="font-['Poppins'] text-sm text-[#bbb]">
+            No items found for this order.
+          </p>
+        </div>
+      )}
+      <div className="px-5 py-4 border-t border-gray-100 flex justify-end">
+        <div className="min-w-[200px]">
+          <div className="flex justify-between font-['Poppins'] font-bold text-base text-[#1C1B1F] pt-1.5">
+            <span>Total Paid</span>
+            <span>
+              $
+              {(order.paidAmount ?? 0).toLocaleString("en-SG", {
+                minimumFractionDigits: 2,
+              })}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Confirm status modal ──────────────────────────────────────────────────────
+function ConfirmStatusModal({
+  currentStatus,
+  newStatus,
+  siteVisitDate,
+  onSiteVisitDateChange,
+  onConfirm,
+  onCancel,
+}: {
+  currentStatus: string;
+  newStatus: string;
+  siteVisitDate?: string;
+  onSiteVisitDateChange?: (date: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const isSiteVisit = newStatus === "Site Visit";
+  const confirmDisabled = isSiteVisit && !siteVisitDate;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+          <svg
+            className="w-6 h-6 text-amber-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
+          </svg>
+        </div>
+        <div className="text-center">
+          <h3 className="font-['Poppins'] font-bold text-lg text-[#1C1B1F]">
+            Update Order Status?
+          </h3>
+          <p className="font-['Poppins'] text-sm text-[#666] mt-1">
+            Change from{" "}
+            <span className="font-semibold text-[#1C1B1F]">
+              {currentStatus}
+            </span>{" "}
+            to <span className="font-semibold text-[#1C1B1F]">{newStatus}</span>
+            ?
+          </p>
+        </div>
+        {isSiteVisit && (
+          <div className="space-y-1.5">
+            <label className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">
+              Site Visit Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 font-['Poppins'] text-sm text-[#1C1B1F] outline-none focus:ring-2 focus:ring-[#1C1B1F]"
+              value={siteVisitDate ?? ""}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={(e) => onSiteVisitDateChange?.(e.target.value)}
+            />
+            <p className="font-['Poppins'] text-xs text-[#888]">
+              Select the date for the site visit appointment.
+            </p>
+          </div>
+        )}
+        <div className="flex flex-col gap-2 pt-1">
+          <button
+            className="w-full bg-[#1C1B1F] hover:bg-[#333] active:scale-95 transition py-3 rounded-xl font-['Poppins'] font-semibold text-base text-white disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={confirmDisabled}
+            onClick={onConfirm}
+          >
+            Yes, Update Status
+          </button>
+          <button
+            className="w-full border border-gray-200 hover:bg-gray-50 transition py-3 rounded-xl font-['Poppins'] text-base text-[#414042]"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Image library modal (admin only) ─────────────────────────────────────────
+function ImageLibraryModal({
+  orderId,
+  images,
+  onClose,
+}: {
+  orderId: string;
+  images: string[];
+  onClose: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [localImages, setLocalImages] = useState<string[]>(images);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of files) {
+        const validationError = validateFile(file);
+        if (validationError) {
+          console.error(validationError);
+          continue;
+        }
+        const result = await uploadFile(file);
+        if (result.secure_url) uploaded.push(result.secure_url);
+      }
+      const newImages = [...localImages, ...uploaded];
+      setLocalImages(newImages);
+      await (api.admin as any).updateOrderImages?.(orderId, newImages);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDelete(url: string) {
+    if (!window.confirm("Delete this image? This cannot be undone.")) return;
+    setDeletingUrl(url);
+    const newImages = localImages.filter((img) => img !== url);
+    setLocalImages(newImages);
+    if (lightboxIdx !== null && localImages[lightboxIdx] === url) {
+      setLightboxIdx(null);
+    }
+    try {
+      await (api.admin as any).updateOrderImages?.(orderId, newImages);
+    } catch (err) {
+      console.error(err);
+      setLocalImages(localImages);
+    } finally {
+      setDeletingUrl(null);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="font-['Poppins'] font-bold text-base text-[#1C1B1F]">
+            Image Library
+          </h3>
+          <div className="flex items-center gap-3">
+            <label
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-['Poppins'] text-sm font-medium cursor-pointer transition ${uploading ? "bg-gray-100 text-gray-400" : "bg-[#1C1B1F] text-white hover:bg-[#333]"}`}
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+              </svg>
+              {uploading ? "Uploading…" : "Upload Images"}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleUpload}
+                disabled={uploading}
+              />
+            </label>
+            <button
+              className="p-1.5 text-[#555] hover:text-[#1C1B1F] transition"
+              onClick={onClose}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M6 18L18 6M6 6l12 12"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">
+          {localImages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 gap-3">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-3xl">
+                🖼
+              </div>
+              <p className="font-['Poppins'] text-sm text-[#bbb]">
+                No images yet — upload some above
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {localImages.map((src, i) => (
+                <div key={i} className="relative group aspect-square">
+                  <button
+                    className="w-full h-full rounded-xl overflow-hidden border border-gray-200 hover:border-gray-400 transition"
+                    onClick={() => setLightboxIdx(i)}
+                  >
+                    <img
+                      alt={`Order image ${i + 1}`}
+                      className="w-full h-full object-cover"
+                      src={src.startsWith("//") ? `https:${src}` : src}
+                    />
+                  </button>
+                  <button
+                    className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
+                    disabled={deletingUrl === src}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(src);
+                    }}
+                    title="Delete image"
+                  >
+                    {deletingUrl === src ? (
+                      <svg
+                        className="w-3.5 h-3.5 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8z"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {lightboxIdx !== null && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxIdx(null)}
+        >
+          <img
+            alt="Preview"
+            className="max-w-full max-h-[90vh] object-contain rounded-xl"
+            src={
+              localImages[lightboxIdx].startsWith("//")
+                ? `https:${localImages[lightboxIdx]}`
+                : localImages[lightboxIdx]
+            }
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition"
+            onClick={() => setLightboxIdx(null)}
+          >
+            <svg
+              className="w-5 h-5 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M6 18L18 6M6 6l12 12"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+              />
+            </svg>
+          </button>
+          {lightboxIdx > 0 && (
+            <button
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/20 hover:bg-white/30 rounded-full transition"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIdx(lightboxIdx - 1);
+              }}
+            >
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M15 19l-7-7 7-7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+              </svg>
+            </button>
+          )}
+          {lightboxIdx < localImages.length - 1 && (
+            <button
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/20 hover:bg-white/30 rounded-full transition"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIdx(lightboxIdx + 1);
+              }}
+            >
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M9 5l7 7-7 7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Order detail panel (admin + salesperson) ──────────────────────────────────
+function OrderDetailPanel({
+  order,
+  onBack,
+  onStatusChange,
+  salespersons = [],
+  isAdmin = false,
+}: {
+  order: BubbleOrder;
+  onBack: () => void;
+  onStatusChange: (id: string, status: string, siteVisitDate?: string) => Promise<void>;
+  salespersons?: BubbleSalesperson[];
+  isAdmin?: boolean;
+}) {
+  const [updating, setUpdating] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [siteVisitDate, setSiteVisitDate] = useState("");
+  const [assignedList, setAssignedList] = useState<string[]>(
+    order.assignedToList ?? (order.assignedTo ? [order.assignedTo] : []),
+  );
+  const [assignedNames, setAssignedNames] = useState<string[]>(
+    order.assignedToNames ??
+      (order.assignedToName ? [order.assignedToName] : []),
+  );
+  const [loadingAssigned, setLoadingAssigned] = useState(isAdmin);
+  const [selectedSalesperson, setSelectedSalesperson] = useState("");
+  const [doNumber, setDoNumber] = useState(order.doNumber ?? "");
+  const [savingAssign, setSavingAssign] = useState(false);
+  const [unassigning, setUnassigning] = useState<string | null>(null);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [invoiceRooms, setInvoiceRooms] = useState<any[]>([]);
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
+
+  async function handleShowInvoice() {
+    setShowInvoice(true);
+    if (invoiceRooms.length > 0) return;
+    setLoadingInvoice(true);
+    try {
+      const [cartRes, roomRes, colorRes, handleRes, alumRes, typeRes, productRes] =
+        await Promise.all([
+          api.cart.list(order._id),
+          api.rooms.listByProject(order._id),
+          api.portfolio.laminate_color(),
+          api.products.get_handle_design(),
+          api.products.get_aluminium_finishing(),
+          api.series.list(),
+          api.products.get_all_products(),
+        ]);
+
+      const cartItems: any[] = cartRes.response.results ?? [];
+      const cartRooms: any[] = roomRes.response.results ?? [];
+      const colors: any[] = colorRes.response.results ?? [];
+      const handleDesigns: any[] = handleRes.response.results ?? [];
+      const aluminium: any[] = alumRes.response.results ?? [];
+      const typeList: any[] = typeRes.response.results ?? [];
+      const productList: any[] = productRes.response.results ?? [];
+
+      const cartItemIdSet = new Set(cartItems.map((p: any) => p._id));
+      const typeMap = Object.fromEntries(typeList.map((t: any) => [t._id, t]));
+      const colorMap = Object.fromEntries(colors.map((c: any) => [c._id, c]));
+      const handleMap = Object.fromEntries(handleDesigns.map((h: any) => [h._id, h]));
+      const finishMap = Object.fromEntries(aluminium.map((a: any) => [a._id, a]));
+      const productMap = Object.fromEntries(cartItems.map((p: any) => [p._id, p]));
+      const pricingMap = Object.fromEntries(productList.map((p: any) => [p._id, p]));
+      const smallWidths = ["L400mm", "L450mm", "L500mm"];
+
+      const resolved = cartRooms
+        .map((room: any) => {
+          const products = (room.items ?? [])
+            .filter((id: string) => cartItemIdSet.has(id))
+            .map((id: string) => productMap[id])
+            .filter(Boolean)
+            .map((p: any) => {
+              const pricing = pricingMap[p.item];
+              const typeData = typeMap[p.type];
+              const isSmall = smallWidths.includes(pricing?.length);
+              const sketchImage = typeData
+                ? isSmall
+                  ? typeData.sketchSmall
+                  : typeData.sketchBig
+                : null;
+              return {
+                _id: p._id,
+                code: typeData?.code ?? null,
+                cost: p.cost ?? 0,
+                sketchImage,
+                internal_color: p.internal_color ?? null,
+                laminate_color: colorMap[p.external_color]?.colorDisplayName ?? null,
+                led_light_text: p.led_light_text ?? null,
+                width: pricing?.length ?? null,
+                door_type: p.door_type ?? null,
+                side_panel_text: p.side_panel_text ?? null,
+                handle_design: handleMap[p.handle_design_text]?.name ?? null,
+                door_finishing: finishMap[p.selected_aluminium_doorType]?.name ?? null,
+              };
+            });
+          return {
+            id: room._id,
+            name: room.name,
+            products,
+            sketchImages: products.map((p: any) => p.sketchImage).filter(Boolean),
+          };
+        })
+        .filter((r: any) => r.products.length > 0);
+
+      setInvoiceRooms(resolved);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingInvoice(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    (api.admin as any)
+      .getOrderSalespersons?.(order._id)
+      .then((res: any) => {
+        const results: any[] = res?.response?.results ?? [];
+        setAssignedList(results.map((s: any) => s._id));
+        setAssignedNames(
+          results.map((s: any) =>
+            s.FirstName ? `${s.FirstName} ${s.LastName ?? ""}`.trim() : s.email,
+          ),
+        );
+      })
+      .catch(() => {
+        /* keep fallback state from order fields */
+      })
+      .finally(() => setLoadingAssigned(false));
+  }, [order._id, isAdmin]);
+  const [savingDO, setSavingDO] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [showImageLib, setShowImageLib] = useState(false);
+
   async function handle(status: string) {
     setUpdating(true);
-    await onStatusChange(order._id, status);
+    await onStatusChange(order._id, status, status === "Site Visit" ? siteVisitDate : undefined);
     setUpdating(false);
+    setPendingStatus(null);
+    setSiteVisitDate("");
+  }
+
+  async function handleAssign() {
+    if (!selectedSalesperson || assignedList.includes(selectedSalesperson))
+      return;
+    setSavingAssign(true);
+    try {
+      await (api.admin as any).assignOrder?.(order._id, selectedSalesperson);
+      const sp = salespersons.find((s) => s._id === selectedSalesperson);
+      const name = sp
+        ? sp.FirstName
+          ? `${sp.FirstName} ${sp.LastName || ""}`.trim()
+          : sp.email
+        : selectedSalesperson;
+      setAssignedList((prev) => [...prev, selectedSalesperson]);
+      setAssignedNames((prev) => [...prev, name]);
+      setSelectedSalesperson("");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingAssign(false);
+    }
+  }
+
+  async function handleUnassign(salespersonId: string) {
+    setUnassigning(salespersonId);
+    try {
+      await (api.admin as any).unassignOrder?.(order._id, salespersonId);
+      setAssignedList((prev) => prev.filter((id) => id !== salespersonId));
+      setAssignedNames((prev) => {
+        const idx = assignedList.indexOf(salespersonId);
+        return prev.filter((_, i) => i !== idx);
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUnassigning(null);
+    }
+  }
+
+  async function handleSaveDO() {
+    if (!doNumber.trim()) return;
+    setSavingDO(true);
+    try {
+      await (api.admin as any).updateDONumber?.(order._id, doNumber.trim());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingDO(false);
+    }
+  }
+
+  async function handleResendInvoice() {
+    setResending(true);
+    try {
+      await (api.admin as any).resendInvoice?.(order._id, order.email);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setResending(false);
+    }
+  }
+
+  const statuses = [
+    "Confirmed",
+    "Site Visit",
+    "Fabricating",
+    "Delivering",
+    "Installation",
+    "Completed",
+  ];
+
+  if (showInvoice) {
+    if (loadingInvoice) {
+      return (
+        <div className="min-h-screen bg-[#faf4e6] flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-[#1C1B1F] border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+    return (
+      <InvoicePage
+        order={{ ...order, rooms: invoiceRooms }}
+        onBack={() => setShowInvoice(false)}
+      />
+    );
   }
 
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
           <button
             className="flex items-center gap-2 text-[#555] hover:text-[#1C1B1F] transition font-['Poppins'] text-sm"
             onClick={onBack}
@@ -502,10 +1249,80 @@ function OrderDetailPanel({
             </svg>
             Back to Orders
           </button>
-          <StatusBadge status={order.status} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg font-['Poppins'] text-xs text-[#555] hover:border-gray-400 transition"
+              onClick={handleShowInvoice}
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+                <path
+                  d="M13 3v6h6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+              </svg>
+              View Invoice
+            </button>
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg font-['Poppins'] text-xs text-[#555] hover:border-gray-400 transition"
+              onClick={handleResendInvoice}
+              disabled={resending}
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+              </svg>
+              {resending ? "Sending…" : "Resend Invoice"}
+            </button>
+            {isAdmin && (
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg font-['Poppins'] text-xs text-[#555] hover:border-gray-400 transition"
+                onClick={() => setShowImageLib(true)}
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                  />
+                </svg>
+                Image Library{" "}
+                {(order.imageLibrary ?? []).length > 0 &&
+                  `(${order.imageLibrary!.length})`}
+              </button>
+            )}
+            <StatusBadge status={(order.paidStatus as string) || ""} />
+          </div>
         </div>
 
-        {/* Order meta */}
+        {/* Meta grid */}
         <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: "Order No", value: order.orderNo },
@@ -536,7 +1353,7 @@ function OrderDetailPanel({
           ))}
         </div>
 
-        {/* Payment summary */}
+        {/* Payment */}
         <div className="mx-5 mb-5 bg-[#faf4e6] rounded-xl p-4 flex items-center justify-between">
           <div>
             <p className="font-['Poppins'] text-xs text-[#888]">Total Amount</p>
@@ -550,202 +1367,109 @@ function OrderDetailPanel({
           <div className="text-right">
             <p className="font-['Poppins'] text-xs text-[#888]">Payment</p>
             <p
-              className={`font-['Poppins'] font-semibold text-sm mt-0.5 ${
-                order.payment_status === "paid"
-                  ? "text-emerald-600"
-                  : "text-amber-600"
-              }`}
+              className={`font-['Poppins'] font-semibold text-sm mt-0.5 ${order.paid === true ? "text-emerald-600" : "text-amber-600"}`}
             >
-              {order.payment_status === "paid" ? "✓ Paid" : "Awaiting Payment"}
+              {order.paid === true ? "✓ Paid" : "Awaiting Payment"}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Product items — resolved with images + config */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h3 className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-            Order Items
-          </h3>
-        </div>
-
-        {itemsLoading && (
-          <div className="flex items-center justify-center gap-3 py-8">
-            <div className="w-5 h-5 border-2 border-[#1C1B1F] border-t-transparent rounded-full animate-spin" />
-            <span className="font-['Poppins'] text-sm text-[#888]">
-              Loading items…
-            </span>
-          </div>
-        )}
-
-        {!itemsLoading &&
-          roomsForUI.map((room: any) => (
-            <div
-              key={room.id}
-              className="border-b border-gray-100 last:border-0"
-            >
-              {/* Room header */}
-              <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100">
-                <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                  {room.name}
-                </p>
-              </div>
-
-              {/* Sketch + render row */}
-              {room.sketchImages.length > 0 && (
-                <div className="px-5 py-3 flex gap-3 overflow-x-auto border-b border-gray-50">
-                  {room.products.map((p: any) => (
-                    <div key={p._id} className="shrink-0 flex gap-2">
-                      {p.sketchImage && (
-                        <div className="w-[70px] h-[90px] border border-gray-200 rounded-lg bg-[#f5f5f5] overflow-hidden">
-                          <img
-                            alt="sketch"
-                            className="w-full h-full object-contain"
-                            src={
-                              p.sketchImage.startsWith("http")
-                                ? p.sketchImage
-                                : `https:${p.sketchImage}`
-                            }
-                          />
-                        </div>
-                      )}
-                      {p.renderImage && (
-                        <div className="w-[70px] h-[90px] border border-gray-200 rounded-lg bg-[#f5f5f5] overflow-hidden">
-                          <img
-                            alt="render"
-                            className="w-full h-full object-contain"
-                            src={
-                              p.renderImage.startsWith("http")
-                                ? p.renderImage
-                                : `https:${p.renderImage}`
-                            }
-                          />
-                        </div>
-                      )}
-                    </div>
+      {/* Assign + DO — admin only */}
+      {isAdmin && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] mb-3">
+              Assign to Salesperson
+            </p>
+            <div className="flex gap-2">
+              <select
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 font-['Poppins'] text-sm text-[#1C1B1F] outline-none"
+                value={selectedSalesperson}
+                onChange={(e) => setSelectedSalesperson(e.target.value)}
+              >
+                <option value="">— Select salesperson —</option>
+                {salespersons
+                  .filter((s) => !assignedList.includes(s._id))
+                  .map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.FirstName
+                        ? `${s.FirstName} ${s.LastName || ""}`.trim()
+                        : s.email}
+                    </option>
                   ))}
-                </div>
-              )}
-
-              {/* Product cards grid */}
-              <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {room.products.map((p: any) => {
-                  const configEntries = fmtConfig(p);
-                  const src = p.sketchImage ?? room.sketchImages[0];
-                  return (
-                    <div
-                      key={p._id}
-                      className="border border-gray-200 rounded-xl overflow-hidden bg-white flex gap-3 p-3"
+              </select>
+              <button
+                className="px-4 py-2.5 bg-[#1C1B1F] text-white rounded-lg font-['Poppins'] text-sm hover:bg-[#333] transition disabled:opacity-50"
+                disabled={!selectedSalesperson || savingAssign}
+                onClick={handleAssign}
+              >
+                {savingAssign ? "Saving…" : "Assign"}
+              </button>
+            </div>
+            {loadingAssigned ? (
+              <p className="font-['Poppins'] text-xs text-[#888] mt-3">
+                Loading…
+              </p>
+            ) : assignedList.length > 0 ? (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {assignedList.map((id, idx) => (
+                  <span
+                    key={id}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 rounded-full font-['Poppins'] text-xs text-[#1C1B1F]"
+                  >
+                    {assignedNames[idx] ?? id}
+                    <button
+                      className="text-[#888] hover:text-red-500 transition disabled:opacity-40"
+                      disabled={unassigning === id}
+                      onClick={() => handleUnassign(id)}
+                      title="Unassign"
                     >
-                      {/* Thumbnail */}
-                      <div className="w-[60px] h-[75px] shrink-0 rounded-lg bg-[#f5f5f5] border border-gray-100 overflow-hidden">
-                        {src ? (
-                          <img
-                            alt={`Type ${p.code}`}
-                            className="w-full h-full object-contain"
-                            src={src.startsWith("http") ? src : `https:${src}`}
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-[#ebebeb]" />
-                        )}
-                      </div>
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                          Type {p.code}
-                        </p>
-                        <p className="font-['Poppins'] font-bold text-sm text-[#1C1B1F] mb-1.5">
-                          ${(p.cost ?? 0).toFixed(2)}
-                        </p>
-                        {/* Config */}
-                        <div className="space-y-0.5">
-                          {configEntries.map(({ label, value }) => (
-                            <p
-                              key={label}
-                              className="font-['Poppins'] text-[10px] text-[#555]"
-                            >
-                              {label}:{" "}
-                              <span className="text-[#888]">{value}</span>
-                            </p>
-                          ))}
-                          {/* Laminate color resolved from lookup */}
-                          {p.laminate_color && (
-                            <p className="font-['Poppins'] text-[10px] text-[#555]">
-                              External Color:{" "}
-                              <span className="text-[#888]">
-                                {p.laminate_color}
-                              </span>
-                            </p>
-                          )}
-                          {p.handle_design && (
-                            <p className="font-['Poppins'] text-[10px] text-[#555]">
-                              Handle:{" "}
-                              <span className="text-[#888]">
-                                {p.handle_design}
-                              </span>
-                            </p>
-                          )}
-                          {p.door_finishing && (
-                            <p className="font-['Poppins'] text-[10px] text-[#555]">
-                              Finishing:{" "}
-                              <span className="text-[#888]">
-                                {p.door_finishing}
-                              </span>
-                            </p>
-                          )}
-                          {p.pricing?.length && (
-                            <p className="font-['Poppins'] text-[10px] text-[#555]">
-                              Width:{" "}
-                              <span className="text-[#888]">
-                                {p.pricing.length}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      {unassigning === id ? "…" : "×"}
+                    </button>
+                  </span>
+                ))}
               </div>
-            </div>
-          ))}
-
-        {!itemsLoading && roomsForUI.length === 0 && (
-          <div className="px-5 py-8 text-center">
-            <p className="font-['Poppins'] text-sm text-[#bbb]">
-              No items found for this order.
-            </p>
+            ) : (
+              <p className="font-['Poppins'] text-xs text-[#888] mt-3">
+                No salesperson assigned
+              </p>
+            )}
           </div>
-        )}
 
-        {/* Totals */}
-        <div className="px-5 py-4 border-t border-gray-100 flex justify-end">
-          <div className="min-w-[200px] space-y-1.5">
-            <div className="flex justify-between font-['Poppins'] text-sm text-[#555]">
-              <span>Subtotal</span>
-              <span className="font-medium text-[#1C1B1F]">
-                ${((order.paidAmount ?? 0) / 0.8).toFixed(2)}
-              </span>
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] mb-3">
+              Delivery Order (DO) Number
+            </p>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 font-['Poppins'] text-sm text-[#1C1B1F] outline-none"
+                placeholder="e.g. DO-2026-001"
+                value={doNumber}
+                onChange={(e) => setDoNumber(e.target.value)}
+              />
+              <button
+                className="px-4 py-2.5 bg-[#1C1B1F] text-white rounded-lg font-['Poppins'] text-sm hover:bg-[#333] transition disabled:opacity-50"
+                disabled={!doNumber.trim() || savingDO}
+                onClick={handleSaveDO}
+              >
+                {savingDO ? "Saving…" : "Save"}
+              </button>
             </div>
-            <div className="flex justify-between font-['Poppins'] text-sm text-[#555]">
-              <span>20% Discount</span>
-              <span className="font-medium text-[#1C1B1F]">
-                −${(((order.paidAmount ?? 0) / 0.8) * 0.2).toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between font-['Poppins'] font-bold text-base text-[#1C1B1F] pt-1.5 border-t border-gray-200 mt-1">
-              <span>Total Paid</span>
-              <span>
-                $
-                {(order.paidAmount ?? 0).toLocaleString("en-SG", {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </div>
+            {order.doNumber && (
+              <p className="font-['Poppins'] text-xs text-[#888] mt-2">
+                Current:{" "}
+                <span className="font-semibold text-[#1C1B1F]">
+                  {order.doNumber}
+                </span>
+              </p>
+            )}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Product items */}
+      <OrderItems order={order} />
 
       {/* Status update */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5">
@@ -753,27 +1477,17 @@ function OrderDetailPanel({
           Update Order Status
         </p>
         <div className="flex gap-2 flex-wrap">
-          {[
-            "Pending",
-            "Confirmed",
-            "In Progress",
-            "Completed",
-            "Cancelled",
-          ].map((s) => {
+          {statuses.map((s) => {
             const val = s.toLowerCase().replace(" ", "_");
             const cur =
-              order.status?.toLowerCase() === val ||
-              order.status?.toLowerCase() === s.toLowerCase();
+              order.paidStatus?.toLowerCase() === val ||
+              order.paidStatus?.toLowerCase() === s.toLowerCase();
             return (
               <button
                 key={s}
                 disabled={cur || updating}
-                className={`px-4 py-2 rounded-lg font-['Poppins'] text-sm transition border ${
-                  cur
-                    ? "bg-[#1C1B1F] text-white border-[#1C1B1F]"
-                    : "border-gray-200 text-[#555] hover:border-gray-400 disabled:opacity-50"
-                }`}
-                onClick={() => handle(s)}
+                className={`px-4 py-2 rounded-lg font-['Poppins'] text-sm transition border ${cur ? "bg-[#1C1B1F] text-white border-[#1C1B1F]" : "border-gray-200 text-[#555] hover:border-gray-400 disabled:opacity-50"}`}
+                onClick={() => setPendingStatus(s)}
               >
                 {s}
               </button>
@@ -781,10 +1495,30 @@ function OrderDetailPanel({
           })}
         </div>
       </div>
+
+      {pendingStatus && (
+        <ConfirmStatusModal
+          currentStatus={order.paidStatus as string}
+          newStatus={pendingStatus}
+          siteVisitDate={siteVisitDate}
+          onSiteVisitDateChange={setSiteVisitDate}
+          onConfirm={() => handle(pendingStatus)}
+          onCancel={() => { setPendingStatus(null); setSiteVisitDate(""); }}
+        />
+      )}
+
+      {showImageLib && isAdmin && (
+        <ImageLibraryModal
+          orderId={order._id}
+          images={order.imageLibrary ?? []}
+          onClose={() => setShowImageLib(false)}
+        />
+      )}
     </div>
   );
 }
 
+// ── Chat panel ────────────────────────────────────────────────────────────────
 function ChatPanel({
   currentUserRole,
   accentColor = "#1C1B1F",
@@ -836,7 +1570,7 @@ function ChatPanel({
         c.messages.sort((a, b) => a["Created Date"] - b["Created Date"]);
       });
       const list = Array.from(convMap.values()).sort(
-        (a, b) => b.lastTime - a.lastTime
+        (a, b) => b.lastTime - a.lastTime,
       );
       setConversations(list);
       if (activeConv) {
@@ -866,7 +1600,7 @@ function ChatPanel({
       await api.admin.sendMessage(
         activeConv.userId,
         message.trim(),
-        currentUserRole
+        currentUserRole,
       );
       setMessage("");
       await fetchMessages();
@@ -899,9 +1633,7 @@ function ChatPanel({
               conversations.map((conv) => (
                 <button
                   key={conv.userId}
-                  className={`w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-gray-50 transition ${
-                    activeConv?.userId === conv.userId ? "bg-gray-50" : ""
-                  }`}
+                  className={`w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-gray-50 transition ${activeConv?.userId === conv.userId ? "bg-gray-50" : ""}`}
                   onClick={() => setActiveConv(conv)}
                 >
                   <div
@@ -916,11 +1648,7 @@ function ChatPanel({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <p
-                        className={`font-['Poppins'] text-sm truncate ${
-                          conv.unread > 0
-                            ? "font-semibold text-[#1C1B1F]"
-                            : "font-medium text-[#555]"
-                        }`}
+                        className={`font-['Poppins'] text-sm truncate ${conv.unread > 0 ? "font-semibold text-[#1C1B1F]" : "font-medium text-[#555]"}`}
                       >
                         {conv.userName}
                       </p>
@@ -969,25 +1697,17 @@ function ChatPanel({
                 return (
                   <div
                     key={msg._id}
-                    className={`flex ${
-                      isAdmin ? "justify-end" : "justify-start"
-                    }`}
+                    className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[72%] px-4 py-2.5 rounded-2xl ${
-                        isAdmin
-                          ? "rounded-br-sm text-white"
-                          : "rounded-bl-sm bg-gray-100 text-[#1C1B1F]"
-                      }`}
+                      className={`max-w-[72%] px-4 py-2.5 rounded-2xl ${isAdmin ? "rounded-br-sm text-white" : "rounded-bl-sm bg-gray-100 text-[#1C1B1F]"}`}
                       style={isAdmin ? { backgroundColor: accentColor } : {}}
                     >
                       <p className="font-['Poppins'] text-sm leading-relaxed">
                         {msg.body}
                       </p>
                       <p
-                        className={`font-['Poppins'] text-[10px] mt-1 ${
-                          isAdmin ? "text-white/60" : "text-[#bbb]"
-                        }`}
+                        className={`font-['Poppins'] text-[10px] mt-1 ${isAdmin ? "text-white/60" : "text-[#bbb]"}`}
                       >
                         {timeAgo(msg["Created Date"])}
                       </p>
@@ -1036,6 +1756,7 @@ function ChatPanel({
   );
 }
 
+// ── Role selection ────────────────────────────────────────────────────────────
 function RoleSelectionPage({ onSelect }: { onSelect: (role: Role) => void }) {
   const [selected, setSelected] = useState<Role | null>(null);
   const roles = [
@@ -1129,11 +1850,7 @@ function RoleSelectionPage({ onSelect }: { onSelect: (role: Role) => void }) {
         {roles.map((role) => (
           <button
             key={role.id}
-            className={`text-left bg-white rounded-2xl p-6 border-2 transition-all relative ${
-              selected === role.id
-                ? "border-[#1C1B1F] shadow-lg"
-                : "border-gray-200 hover:border-gray-300"
-            }`}
+            className={`text-left bg-white rounded-2xl p-6 border-2 transition-all relative ${selected === role.id ? "border-[#1C1B1F] shadow-lg" : "border-gray-200 hover:border-gray-300"}`}
             onClick={() => setSelected(role.id)}
           >
             {selected === role.id && (
@@ -1197,11 +1914,7 @@ function RoleSelectionPage({ onSelect }: { onSelect: (role: Role) => void }) {
         ))}
       </div>
       <button
-        className={`px-10 py-3.5 rounded-xl font-['Poppins'] font-semibold text-base transition ${
-          selected
-            ? "bg-[#1C1B1F] text-white hover:bg-[#333] active:scale-95"
-            : "bg-gray-200 text-gray-400 cursor-not-allowed"
-        }`}
+        className={`px-10 py-3.5 rounded-xl font-['Poppins'] font-semibold text-base transition ${selected ? "bg-[#1C1B1F] text-white hover:bg-[#333] active:scale-95" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
         disabled={!selected}
         onClick={() => selected && onSelect(selected)}
       >
@@ -1216,30 +1929,69 @@ function RoleSelectionPage({ onSelect }: { onSelect: (role: Role) => void }) {
   );
 }
 
+// ── Admin dashboard ───────────────────────────────────────────────────────────
 function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [orders, setOrders] = useState<BubbleOrder[]>([]);
   const [users, setUsers] = useState<BubbleUser[]>([]);
+  const [salespersons, setSalespersons] = useState<BubbleSalesperson[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<BubbleOrder | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [assigningRole, setAssigningRole] = useState<string | null>(null);
+  const [roleValue, setRoleValue] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
 
   useEffect(() => {
     setLoading(true);
     Promise.all([api.admin.listOrders(), api.admin.listUsers()])
       .then(([o, u]) => {
+        const allUsers = u?.response?.results ?? [];
         setOrders(o?.response?.results ?? []);
-        setUsers(u?.response?.results ?? []);
+        setUsers(allUsers);
+        setSalespersons(
+          allUsers.filter(
+            (u: any) => u.userRole === "salesperson" || u.userRole === "admin",
+          ),
+        );
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleStatusChange(id: string, status: string) {
-    await api.admin.updateOrderStatus(id, status);
-    setOrders((p) => p.map((o) => (o._id === id ? { ...o, status } : o)));
-    setSelectedOrder((p) => (p ? { ...p, status } : null));
+  async function handleStatusChange(id: string, status: string, siteVisitDate?: string) {
+    await api.admin.updateOrderStatus(id, status, siteVisitDate);
+    setOrders((p) =>
+      p.map((o) => (o._id === id ? { ...o, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : o)),
+    );
+    setSelectedOrder((p) => (p ? { ...p, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : null));
+  }
+
+  async function handleAssignRole(userId: string, role: string) {
+    try {
+      await (api.admin as any).assignUserRole?.(userId, role);
+      setUsers((prev) =>
+        prev.map((u) => (u._id === userId ? { ...u, userRole: role } : u)),
+      );
+      const updated = users.find((u) => u._id === userId);
+      if (updated) {
+        const withRole = { ...updated, userRole: role };
+        if (role === "salesperson" || role === "admin") {
+          setSalespersons((prev) =>
+            prev.find((s) => s._id === userId)
+              ? prev.map((s) => (s._id === userId ? withRole : s))
+              : [...prev, withRole],
+          );
+        } else {
+          setSalespersons((prev) => prev.filter((s) => s._id !== userId));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setAssigningRole(null);
+    setRoleValue("");
   }
 
   const totalRevenue = orders.reduce((s, o) => s + (o.paidAmount ?? 0), 0);
@@ -1255,7 +2007,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
       o.email?.toLowerCase().includes(q);
     const mf =
       filterStatus === "all" ||
-      o.status?.toLowerCase() === filterStatus.toLowerCase();
+      o.paidStatus?.toLowerCase() === filterStatus.toLowerCase();
     return ms && mf;
   });
 
@@ -1284,8 +2036,8 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
             {selectedOrder
               ? "Order Details"
               : activeTab === "overview"
-              ? "Dashboard Overview"
-              : activeTab}
+                ? "Dashboard Overview"
+                : activeTab}
           </h1>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-[#1C1B1F] flex items-center justify-center">
@@ -1306,9 +2058,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard
                       label="Total Revenue"
-                      value={`$${totalRevenue.toLocaleString("en-SG", {
-                        minimumFractionDigits: 2,
-                      })}`}
+                      value={`$${totalRevenue.toLocaleString("en-SG", { minimumFractionDigits: 2 })}`}
                       icon="💰"
                     />
                     <StatCard
@@ -1354,7 +2104,9 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                             </p>
                           </div>
                           <div className="flex items-center gap-4">
-                            <StatusBadge status={order.status} />
+                            <StatusBadge
+                              status={order.paidStatus || order.status}
+                            />
                             <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
                               $
                               {order.paidAmount?.toLocaleString("en-SG", {
@@ -1377,12 +2129,15 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                   </div>
                 </div>
               )}
+
               {activeTab === "orders" &&
                 (selectedOrder ? (
                   <OrderDetailPanel
                     order={selectedOrder}
                     onBack={() => setSelectedOrder(null)}
                     onStatusChange={handleStatusChange}
+                    salespersons={salespersons}
+                    isAdmin={true}
                   />
                 ) : (
                   <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -1399,11 +2154,12 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                         onChange={(e) => setFilterStatus(e.target.value)}
                       >
                         <option value="all">All statuses</option>
-
-                        <option value="confirmed">Confirmed</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Site Visit">Site Visit</option>
+                        <option value="Fabricating">Fabricating</option>
+                        <option value="Delivering">Delivering</option>
+                        <option value="Installation">Installation</option>
+                        <option value="Completed">Completed</option>
                       </select>
                     </div>
                     <div className="overflow-x-auto">
@@ -1453,7 +2209,9 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                                 {formatDate(order["Created Date"])}
                               </td>
                               <td className="px-5 py-3.5">
-                                <StatusBadge status={order.status} />
+                                <StatusBadge
+                                  status={(order.paidStatus as string) || ""}
+                                />
                               </td>
                               <td className="px-5 py-3.5">
                                 <button
@@ -1477,24 +2235,48 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                     </div>
                   </div>
                 ))}
+
               {activeTab === "users" && (
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-100">
+                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-4 flex-wrap">
                     <h2 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
                       Registered Users{" "}
                       <span className="text-[#888] font-normal">
-                        ({users.length})
+                        ({userRoleFilter === "all" ? users.length : users.filter((u) => (u.userRole || "customer") === userRoleFilter).length})
                       </span>
                     </h2>
+                    <div className="flex items-center gap-3">
+                      <select
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 font-['Poppins'] text-xs text-[#1C1B1F] outline-none focus:ring-2 focus:ring-[#1C1B1F]"
+                        value={userRoleFilter}
+                        onChange={(e) => setUserRoleFilter(e.target.value)}
+                      >
+                        <option value="all">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="salesperson">Salesperson</option>
+                        <option value="vendor">Vendor</option>
+                        <option value="customer">Customer</option>
+                      </select>
+                      <p className="font-['Poppins'] text-xs text-[#888]">
+                        Assign roles to grant portal access
+                      </p>
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-100">
-                          {["Name", "Email", "Phone", "Joined"].map((h) => (
+                          {[
+                            "Name",
+                            "Email",
+                            "Phone",
+                            "Joined",
+                            "Role",
+                            "Actions",
+                          ].map((h) => (
                             <th
                               key={h}
-                              className="px-5 py-3 text-left font-['Poppins'] text-xs font-semibold text-[#888] uppercase tracking-wider"
+                              className="px-5 py-3 text-left font-['Poppins'] text-xs font-semibold text-[#888] uppercase tracking-wider whitespace-nowrap"
                             >
                               {h}
                             </th>
@@ -1502,39 +2284,113 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {users.map((user) => (
-                          <tr
-                            key={user._id}
-                            className="hover:bg-gray-50 transition"
-                          >
-                            <td className="px-5 py-3.5">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-[#1C1B1F] flex items-center justify-center shrink-0">
-                                  <span className="text-white text-xs font-bold">
-                                    {(user.FirstName ||
-                                      user.authentication.email.email ||
-                                      "?")[0].toUpperCase()}
+                        {users.filter((u) => userRoleFilter === "all" || (u.userRole || "customer") === userRoleFilter).map((user) => {
+                          const name = user.FirstName
+                            ? `${user.FirstName} ${user.LastName || ""}`.trim()
+                            : "—";
+                          const email =
+                            user.authentication?.email?.email ||
+                            user.email ||
+                            "—";
+                          const isAssigning = assigningRole === user._id;
+                          return (
+                            <tr
+                              key={user._id}
+                              className="hover:bg-gray-50 transition"
+                            >
+                              <td className="px-5 py-3.5">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-[#1C1B1F] flex items-center justify-center shrink-0">
+                                    <span className="text-white text-xs font-bold">
+                                      {name[0]?.toUpperCase() ||
+                                        email[0]?.toUpperCase() ||
+                                        "?"}
+                                    </span>
+                                  </div>
+                                  <span className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
+                                    {name}
                                   </span>
                                 </div>
-                                <span className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
-                                  {user.FirstName + " " + user.LastName || "—"}
+                              </td>
+                              <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888]">
+                                {email}
+                              </td>
+                              <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888]">
+                                {user.ContactNumber || user.phone || "—"}
+                              </td>
+                              <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888] whitespace-nowrap">
+                                {formatDate(user["Created Date"])}
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <span
+                                  className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
+                                    user.userRole === "admin"
+                                      ? "bg-purple-100 text-purple-700"
+                                      : user.userRole === "salesperson"
+                                        ? "bg-blue-100 text-blue-700"
+                                        : user.userRole === "vendor"
+                                          ? "bg-amber-100 text-amber-700"
+                                          : "bg-gray-100 text-gray-500"
+                                  }`}
+                                >
+                                  {user.userRole || "Customer"}
                                 </span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888]">
-                              {user.authentication.email.email || "—"}
-                            </td>
-                            <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888]">
-                              {user.ContactNumber || "—"}
-                            </td>
-                            <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888]">
-                              {formatDate(user["Created Date"])}
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td className="px-5 py-3.5">
+                                {isAssigning ? (
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-['Poppins'] text-xs text-[#1C1B1F] outline-none"
+                                      value={roleValue}
+                                      onChange={(e) =>
+                                        setRoleValue(e.target.value)
+                                      }
+                                    >
+                                      <option value="">Select role</option>
+                                      <option value="admin">Admin</option>
+                                      <option value="salesperson">
+                                        Salesperson
+                                      </option>
+                                      <option value="vendor">Vendor</option>
+                                      <option value="customer">Customer</option>
+                                    </select>
+                                    <button
+                                      className="px-2.5 py-1.5 bg-[#1C1B1F] text-white rounded-lg font-['Poppins'] text-xs hover:bg-[#333] transition disabled:opacity-50"
+                                      disabled={!roleValue}
+                                      onClick={() =>
+                                        handleAssignRole(user._id, roleValue)
+                                      }
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      className="px-2.5 py-1.5 border border-gray-200 rounded-lg font-['Poppins'] text-xs hover:bg-gray-50 transition"
+                                      onClick={() => {
+                                        setAssigningRole(null);
+                                        setRoleValue("");
+                                      }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    className="px-3 py-1.5 border border-gray-200 text-[#555] rounded-lg font-['Poppins'] text-xs hover:border-gray-400 transition"
+                                    onClick={() => {
+                                      setAssigningRole(user._id);
+                                      setRoleValue(user.role ?? "");
+                                    }}
+                                  >
+                                    Change Role
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
-                    {users.length === 0 && (
+                    {users.filter((u) => userRoleFilter === "all" || (u.userRole || "customer") === userRoleFilter).length === 0 && (
                       <div className="py-12 text-center">
                         <p className="font-['Poppins'] text-sm text-[#bbb]">
                           No users found
@@ -1544,6 +2400,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                   </div>
                 </div>
               )}
+
               {activeTab === "chats" && (
                 <ChatPanel currentUserRole="admin" accentColor="#1C1B1F" />
               )}
@@ -1555,6 +2412,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
   );
 }
 
+// ── Salesperson dashboard ─────────────────────────────────────────────────────
 function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
   const [activeTab, setActiveTab] = useState("orders");
   const [orders, setOrders] = useState<BubbleOrder[]>([]);
@@ -1563,16 +2421,18 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
 
   useEffect(() => {
     api.admin
-      .listOrders()
+      .listAssignedOrders()
       .then((r) => setOrders(r?.response?.results ?? []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleStatusChange(id: string, status: string) {
-    await api.admin.updateOrderStatus(id, status);
-    setOrders((p) => p.map((o) => (o._id === id ? { ...o, status } : o)));
-    setSelectedOrder((p) => (p ? { ...p, status } : null));
+  async function handleStatusChange(id: string, status: string, siteVisitDate?: string) {
+    await api.admin.updateOrderStatus(id, status, siteVisitDate);
+    setOrders((p) =>
+      p.map((o) => (o._id === id ? { ...o, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : o)),
+    );
+    setSelectedOrder((p) => (p ? { ...p, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : null));
   }
 
   return (
@@ -1617,6 +2477,7 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
                     order={selectedOrder}
                     onBack={() => setSelectedOrder(null)}
                     onStatusChange={handleStatusChange}
+                    isAdmin={false}
                   />
                 ) : (
                   <div className="space-y-4">
@@ -1630,8 +2491,8 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
                         label="Pending"
                         value={String(
                           orders.filter(
-                            (o) => o.status?.toLowerCase() === "pending"
-                          ).length
+                            (o) => o.status?.toLowerCase() === "pending",
+                          ).length,
                         )}
                         icon="⏳"
                       />
@@ -1639,8 +2500,8 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
                         label="Confirmed"
                         value={String(
                           orders.filter(
-                            (o) => o.status?.toLowerCase() === "confirmed"
-                          ).length
+                            (o) => o.status?.toLowerCase() === "confirmed",
+                          ).length,
                         )}
                         icon="✅"
                       />
@@ -1662,7 +2523,9 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
                               </p>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
-                              <StatusBadge status={order.status} />
+                              <StatusBadge
+                                status={order.paidStatus || order.status}
+                              />
                               <p className="font-['Poppins'] font-bold text-sm text-[#1C1B1F]">
                                 $
                                 {order.paidAmount?.toLocaleString("en-SG", {
@@ -1696,278 +2559,7 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
   );
 }
 
-function VendorOrderDetail({
-  order,
-  onBack,
-}: {
-  order: BubbleOrder;
-  onBack: () => void;
-}) {
-  // Same resolution pipeline — read-only, no status update section
-  const [cartItems, setCartItems] = useState<any[]>([]);
-  const [cartRooms, setCartRooms] = useState<any[]>([]);
-  const [typeList, setTypeList] = useState<any[]>([]);
-  const [productList, setProductList] = useState<any[]>([]);
-  const [colors, setColors] = useState<any[]>([]);
-  const [handles, setHandles] = useState<any[]>([]);
-  const [aluminium, setAluminium] = useState<any[]>([]);
-  const [itemsLoading, setItemsLoading] = useState(true);
-
-  useEffect(() => {
-    const projectId = order.project ?? order._id;
-    Promise.all([
-      api.cart.list(projectId),
-      api.rooms.listByProject(projectId),
-      api.portfolio.laminate_color(),
-      api.products.get_handle_design(),
-      api.products.get_aluminium_finishing(),
-      api.series.list(),
-      api.products.get_all_products(),
-    ])
-      .then(
-        ([
-          cartRes,
-          roomRes,
-          colorRes,
-          handleRes,
-          alumRes,
-          typeRes,
-          productRes,
-        ]) => {
-          setCartItems(cartRes.response.results ?? []);
-          setCartRooms(roomRes.response.results ?? []);
-          setColors(colorRes.response.results ?? []);
-          setHandles(handleRes.response.results ?? []);
-          setAluminium(alumRes.response.results ?? []);
-          setTypeList(typeRes.response.results ?? []);
-          setProductList(productRes.response.results ?? []);
-        }
-      )
-      .catch(console.error)
-      .finally(() => setItemsLoading(false));
-  }, [order._id]);
-
-  const typeMap = Object.fromEntries(typeList.map((t: any) => [t._id, t]));
-  const colorMap = Object.fromEntries(colors.map((c: any) => [c._id, c]));
-  const handleMap = Object.fromEntries(handles.map((h: any) => [h._id, h]));
-  const finishMap = Object.fromEntries(aluminium.map((a: any) => [a._id, a]));
-  const productMap = Object.fromEntries(cartItems.map((p: any) => [p._id, p]));
-  const pricingMap = Object.fromEntries(
-    productList.map((p: any) => [p._id, p])
-  );
-  const cartItemIdSet = new Set(cartItems.map((p: any) => p._id));
-
-  const roomsForUI = cartRooms
-    .map((room: any) => {
-      const resolvedIds = (room.items ?? []).filter((id: string) =>
-        cartItemIdSet.has(id)
-      );
-      const products = resolvedIds
-        .map((id: string) => productMap[id])
-        .filter(Boolean)
-        .map((p: any) => {
-          const pricing = pricingMap[p.item];
-          const typeData = typeMap[p.type];
-          const withPricing = { ...p, pricing };
-          return {
-            ...withPricing,
-            code: typeData?.code ?? null,
-            laminate_color:
-              colorMap[p.external_color]?.colorDisplayName ?? null,
-            handle_design: handleMap[p.handle_design_text]?.name ?? null,
-            door_finishing:
-              finishMap[p.selected_aluminium_doorType]?.name ?? null,
-            sketchImage: typeData ? getSketchImg(typeData, withPricing) : null,
-            renderImage: typeData ? getRenderImg(typeData, withPricing) : null,
-          };
-        });
-      return {
-        id: room._id,
-        name: room.name,
-        products,
-        sketchImages: products.map((p: any) => p.sketchImage).filter(Boolean),
-      };
-    })
-    .filter((r: any) => r.products.length > 0);
-
-  return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <button
-            className="flex items-center gap-2 text-[#555] hover:text-[#1C1B1F] transition font-['Poppins'] text-sm"
-            onClick={onBack}
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                d="M15 19l-7-7 7-7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-              />
-            </svg>
-            Back to Orders
-          </button>
-          <div className="flex items-center gap-2">
-            <StatusBadge status={order.status} />
-            <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full font-['Poppins'] text-xs font-semibold">
-              Read-only
-            </span>
-          </div>
-        </div>
-
-        {/* Meta */}
-        <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: "Order No", value: order.orderNo },
-            { label: "Customer", value: order.fullName },
-            {
-              label: "Installation",
-              value: formatDate(order.installationDate),
-            },
-            {
-              label: "Amount",
-              value: `$${order.paidAmount?.toLocaleString("en-SG", {
-                minimumFractionDigits: 2,
-              })}`,
-            },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-gray-50 rounded-xl p-3">
-              <p className="font-['Poppins'] text-[10px] text-[#888] mb-1 uppercase tracking-wider">
-                {label}
-              </p>
-              <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                {value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Items */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h3 className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-            Order Items
-          </h3>
-        </div>
-
-        {itemsLoading && (
-          <div className="flex items-center justify-center gap-3 py-8">
-            <div className="w-5 h-5 border-2 border-[#7b7267] border-t-transparent rounded-full animate-spin" />
-            <span className="font-['Poppins'] text-sm text-[#888]">
-              Loading items…
-            </span>
-          </div>
-        )}
-
-        {!itemsLoading &&
-          roomsForUI.map((room: any) => (
-            <div
-              key={room.id}
-              className="border-b border-gray-100 last:border-0"
-            >
-              <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100">
-                <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                  {room.name}
-                </p>
-              </div>
-              <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {room.products.map((p: any) => {
-                  const configEntries = fmtConfig(p);
-                  const src = p.sketchImage ?? room.sketchImages[0];
-                  return (
-                    <div
-                      key={p._id}
-                      className="border border-gray-200 rounded-xl overflow-hidden bg-white flex gap-3 p-3"
-                    >
-                      <div className="w-[60px] h-[75px] shrink-0 rounded-lg bg-[#f5f5f5] border border-gray-100 overflow-hidden">
-                        {src ? (
-                          <img
-                            alt={`Type ${p.code}`}
-                            className="w-full h-full object-contain"
-                            src={src.startsWith("http") ? src : `https:${src}`}
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-[#ebebeb]" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
-                          Type {p.code}
-                        </p>
-                        <p className="font-['Poppins'] font-bold text-sm text-[#1C1B1F] mb-1.5">
-                          ${(p.cost ?? 0).toFixed(2)}
-                        </p>
-                        <div className="space-y-0.5">
-                          {configEntries.map(({ label, value }) => (
-                            <p
-                              key={label}
-                              className="font-['Poppins'] text-[10px] text-[#555]"
-                            >
-                              {label}:{" "}
-                              <span className="text-[#888]">{value}</span>
-                            </p>
-                          ))}
-                          {p.laminate_color && (
-                            <p className="font-['Poppins'] text-[10px] text-[#555]">
-                              External Color:{" "}
-                              <span className="text-[#888]">
-                                {p.laminate_color}
-                              </span>
-                            </p>
-                          )}
-                          {p.handle_design && (
-                            <p className="font-['Poppins'] text-[10px] text-[#555]">
-                              Handle:{" "}
-                              <span className="text-[#888]">
-                                {p.handle_design}
-                              </span>
-                            </p>
-                          )}
-                          {p.door_finishing && (
-                            <p className="font-['Poppins'] text-[10px] text-[#555]">
-                              Finishing:{" "}
-                              <span className="text-[#888]">
-                                {p.door_finishing}
-                              </span>
-                            </p>
-                          )}
-                          {p.pricing?.length && (
-                            <p className="font-['Poppins'] text-[10px] text-[#555]">
-                              Width:{" "}
-                              <span className="text-[#888]">
-                                {p.pricing.length}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-
-        {!itemsLoading && roomsForUI.length === 0 && (
-          <div className="px-5 py-8 text-center">
-            <p className="font-['Poppins'] text-sm text-[#bbb]">
-              No items found for this order.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
+// ── Vendor dashboard ──────────────────────────────────────────────────────────
 function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
   const [orders, setOrders] = useState<BubbleOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2007,7 +2599,7 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
   }
 
   const filtered = orders.filter(
-    (o) => filter === "all" || getStage(o.status) === filter
+    (o) => filter === "all" || getStage(o.status) === filter,
   );
 
   return (
@@ -2034,10 +2626,63 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
           {loading ? (
             <Spinner />
           ) : selectedOrder ? (
-            <VendorOrderDetail
-              order={selectedOrder}
-              onBack={() => setSelectedOrder(null)}
-            />
+            <div className="space-y-5">
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <button
+                    className="flex items-center gap-2 text-[#555] hover:text-[#1C1B1F] transition font-['Poppins'] text-sm"
+                    onClick={() => setSelectedOrder(null)}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M15 19l-7-7 7-7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                      />
+                    </svg>
+                    Back to Orders
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge
+                      status={selectedOrder.paidStatus || selectedOrder.status}
+                    />
+                    <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full font-['Poppins'] text-xs font-semibold">
+                      Read-only
+                    </span>
+                  </div>
+                </div>
+                <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Order No", value: selectedOrder.orderNo },
+                    { label: "Customer", value: selectedOrder.fullName },
+                    {
+                      label: "Installation",
+                      value: formatDate(selectedOrder.installationDate),
+                    },
+                    {
+                      label: "Amount",
+                      value: `$${selectedOrder.paidAmount?.toLocaleString("en-SG", { minimumFractionDigits: 2 })}`,
+                    },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="bg-gray-50 rounded-xl p-3">
+                      <p className="font-['Poppins'] text-[10px] text-[#888] mb-1 uppercase tracking-wider">
+                        {label}
+                      </p>
+                      <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <OrderItems order={selectedOrder} />
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-3 gap-4">
@@ -2050,7 +2695,7 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                   label="In Fabrication"
                   value={String(
                     orders.filter((o) => getStage(o.status) === "Fabrication")
-                      .length
+                      .length,
                   )}
                   icon="🔧"
                 />
@@ -2058,7 +2703,7 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                   label="Completed"
                   value={String(
                     orders.filter((o) => getStage(o.status) === "Completion")
-                      .length
+                      .length,
                   )}
                   icon="🏁"
                 />
@@ -2068,16 +2713,12 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                   (f) => (
                     <button
                       key={f}
-                      className={`px-4 py-2 rounded-full font-['Poppins'] text-sm font-medium transition ${
-                        filter === f
-                          ? "bg-[#1C1B1F] text-white"
-                          : "bg-white border border-gray-200 text-[#555] hover:border-gray-300"
-                      }`}
+                      className={`px-4 py-2 rounded-full font-['Poppins'] text-sm font-medium transition ${filter === f ? "bg-[#1C1B1F] text-white" : "bg-white border border-gray-200 text-[#555] hover:border-gray-300"}`}
                       onClick={() => setFilter(f)}
                     >
                       {f === "all" ? "All Stages" : f}
                     </button>
-                  )
+                  ),
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2099,15 +2740,11 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                             {order.fullName}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-xs font-['Poppins'] font-semibold ${stageColor(
-                              stage
-                            )}`}
-                          >
-                            {stage}
-                          </span>
-                        </div>
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-['Poppins'] font-semibold ${stageColor(stage)}`}
+                        >
+                          {stage}
+                        </span>
                       </div>
                       <p className="font-['Poppins'] text-xs text-[#888] mb-3">
                         Installation: {formatDate(order.installationDate)}
@@ -2137,19 +2774,13 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
                         </p>
                         <div className="flex items-center gap-2">
                           <span
-                            className={`font-['Poppins'] text-xs font-semibold ${
-                              progress >= 90
-                                ? "text-emerald-600"
-                                : progress >= 50
-                                ? "text-blue-600"
-                                : "text-amber-600"
-                            }`}
+                            className={`font-['Poppins'] text-xs font-semibold ${progress >= 90 ? "text-emerald-600" : progress >= 50 ? "text-blue-600" : "text-amber-600"}`}
                           >
                             {progress >= 90
                               ? "Almost done"
                               : progress >= 50
-                              ? "On track"
-                              : "In progress"}
+                                ? "On track"
+                                : "In progress"}
                           </span>
                           <span className="font-['Poppins'] text-xs text-[#7b7267]">
                             Tap to view →
@@ -2175,6 +2806,7 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
   );
 }
 
+// ── Root ──────────────────────────────────────────────────────────────────────
 export default function AdminPortal() {
   const [role, setRole] = useState<Role | null>(null);
   if (!role) return <RoleSelectionPage onSelect={setRole} />;
