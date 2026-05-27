@@ -42,7 +42,7 @@ export default function LandingPage() {
         <FAQSection />
       </main>
       <Footer
-        onAdminClick={() => navigateTo("admin", true)}
+        onAdminClick={isLoggedIn ? () => navigateTo("admin", true) : undefined}
         onPrivacyClick={() => setCurrentPage("privacy")}
         onTermsClick={() => setCurrentPage("terms")}
       />
