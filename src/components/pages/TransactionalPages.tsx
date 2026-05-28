@@ -11,8 +11,12 @@ type PaymentStatus =
   | "in_progress"
   | "completed"
   | "cancelled"
-  | "Confirmed" // Bubble capitalises these
-  | "Pending";
+  | "Confirmed"
+  | "Pending"
+  | "Site Visit"
+  | "Fabricating"
+  | "Delivering"
+  | "Completed";
 
 interface OrderProduct {
   id: string;
@@ -35,6 +39,7 @@ interface Order {
   subtotal?: number;
   discount?: number;
   status: PaymentStatus;
+  paidStatus?: string;
   paidOn?: string;
   confirmedOn?: string;
   installationDate?: string | number;
@@ -283,23 +288,28 @@ function ChevronDown({ open }: { open: boolean }) {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: PaymentStatus }) {
-  const normalised = String(status).toLowerCase();
+function StatusBadge({ status }: { status: string }) {
+  const key = String(status).toLowerCase();
   const styles: Record<string, string> = {
     pending: "bg-[#e8e8e8] text-[#555]",
     confirmed: "bg-[#4caf50] text-white",
+    "site visit": "bg-[#2196f3] text-white",
+    fabricating: "bg-[#ff9800] text-white",
+    delivering: "bg-[#9c27b0] text-white",
     in_progress: "bg-[#ff9800] text-white",
-    completed: "bg-[#2196f3] text-white",
+    completed: "bg-[#009688] text-white",
     cancelled: "bg-[#f44336] text-white",
   };
   const labels: Record<string, string> = {
-    pending: "Pending Payment Confirm",
+    pending: "Pending Payment",
     confirmed: "Confirmed",
+    "site visit": "Site Visit",
+    fabricating: "Fabricating",
+    delivering: "Delivering",
     in_progress: "In Progress",
     completed: "Completed",
     cancelled: "Cancelled",
   };
-  const key = normalised.replace(" ", "_");
   return (
     <span
       className={`px-3 py-1.5 rounded font-['Poppins'] font-medium text-xs whitespace-nowrap ${styles[key] ?? "bg-[#e8e8e8] text-[#555]"}`}
@@ -308,8 +318,6 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
     </span>
   );
 }
-
-
 
 // ─── ORDER DETAILS PAGE ───────────────────────────────────────────────────────
 // Uses the exact same data-resolution pipeline as the cart page:
@@ -1442,13 +1450,15 @@ export function ShoppingCartPage() {
                   </p>
                   <p className="font-['Poppins'] font-bold text-lg text-[#1C1B1F]">
                     $
-                    {order?.paidAmount?.toLocaleString("en-SG", {
+                    {order?.total?.toLocaleString("en-SG", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </p>
                 </div>
-                <StatusBadge status={order.status} />
+                <StatusBadge
+                  status={(order.paidStatus || order.status) as string}
+                />
               </div>
               <div className="border-t border-gray-100 px-5 py-3 flex justify-end">
                 <button
@@ -1718,11 +1728,8 @@ export function CheckoutPage() {
     form.phone.trim().length >= 7 &&
     form.agreedToTerms &&
     form.siteVisitAcknowledged &&
-    form.installationDate &&
-    (form.deliverySameAsProperty ||
-      form.deliveryPostalCode.trim().length > 0) &&
-    form.homeZipCode.trim().length > 0 &&
-    form.homeUnit.trim().length > 0;
+    !!form.installationDate &&
+    (form.deliverySameAsProperty || form.deliveryPostalCode.trim().length > 0);
 
   const typeMap = Object.fromEntries(type.map((t: any) => [t._id, t]));
   const productMap = Object.fromEntries(cartItem.map((p: any) => [p._id, p]));
@@ -1804,7 +1811,7 @@ export function CheckoutPage() {
         homeZipCode: form.homeZipCode,
         homeUnit: form.homeUnit,
         paymentMethod: form.paymentMethod,
-
+        cost: total,
         // Optional — only included when they have a value
         ...(form.deliveryUnit?.trim()
           ? { deliveryUnit: form.deliveryUnit }

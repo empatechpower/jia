@@ -41,11 +41,13 @@ function AddToCartModal({
   onConfirm,
   onChangeRoom,
   onClose,
+  disabled,
 }: {
   roomName: string;
   onConfirm: () => void;
   onChangeRoom: () => void;
   onClose: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div
@@ -62,10 +64,11 @@ function AddToCartModal({
         </p>
         <div className="flex flex-col gap-3">
           <button
-            className="w-full bg-[#414042] hover:bg-[#242424] transition py-3 rounded-xl font-['Poppins'] font-bold text-base text-white"
+            className="w-full bg-[#414042] hover:bg-[#242424] transition py-3 rounded-xl font-['Poppins'] font-bold text-base text-white disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={onConfirm}
+            disabled={disabled}
           >
-            Add to {roomName}
+            {disabled ? "Adding…" : `Add to ${roomName}`}
           </button>
           <button
             className="w-full border border-[#e0e0e0] hover:bg-gray-50 transition py-3 rounded-xl font-['Poppins'] text-base text-[#414042]"
@@ -355,6 +358,7 @@ export default function ProductDetailsPage() {
   const [showCartModal, setShowCartModal] = useState(false);
   const [showRoomPicker, setShowRoomPicker] = useState(false);
   const [availableRooms, setAvailableRooms] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
   const [, setZoomImg] = useState<{ url: string; alt: string } | null>(null);
   const [lightbox, setLightbox] = useState<{
     images: { url: string; alt: string; id?: string }[];
@@ -363,40 +367,48 @@ export default function ProductDetailsPage() {
   const [showMoreInfo, setShowMoreInfo] = useState(false);
   const [lengthData, setLengthData] = useState<any>(null);
 
-  function handleConfirmAdd() {
-    api.cart.add({
-      aluminium_frame_color: cfg.aluminiumFrameColor ?? "",
-      blum_runner_upgrade: cfg.blumRunnerUpgrade ?? "",
-      cost: prices?.original,
-      door_type: cfg.doorOption ?? "",
-      drawer_lock: cfg.addLock ?? "",
-      external_color: cfg.externalColor ?? "",
-      handle_color: cfg.handleColor ?? "",
-      handle_design: cfg.handleDesign ?? "",
-      internal_color: cfg.internalColor ?? "",
-      item: cfg.width_id ?? "",
-      led_light: cfg.ledStrip ?? "",
-      numlock: Number(cfg.numberOfLocks) ?? "",
-      project_cart: propertyInfo.projectId ?? "",
-      remarks: cfg.remarks,
-      room: selectedRoomId ?? "",
-      side_panel: cfg.sidePanel ?? "",
-      selected_aluminium_door_type: cfg.aluminiumDoorFinishing ?? "",
-      discount_rate: 0,
-      type: typeId,
-    });
-    const productImage = PRODUCT_GALLERY_IMAGES[0];
-    handleAddProductToCart(
-      selectedProductName,
-      selectedRoomId,
-      selectedRoom,
-      productImage,
-      cfg as any,
-    );
-    setSelectedProductConfig(undefined);
-    setShowSuccessMessage(true);
-    setShowCartModal(false);
-    setCurrentPage("roomSelection");
+  const cartPayload = () => ({
+    aluminium_frame_color: cfg.aluminiumFrameColor ?? "",
+    blum_runner_upgrade: cfg.blumRunnerUpgrade ?? "",
+    cost: prices?.original,
+    door_type: cfg.doorOption ?? "",
+    drawer_lock: cfg.addLock ?? "",
+    external_color: cfg.externalColor ?? "",
+    handle_color: cfg.handleColor ?? "",
+    handle_design: cfg.handleDesign ?? "",
+    internal_color: cfg.internalColor ?? "",
+    item: cfg.width_id ?? "",
+    led_light: cfg.ledStrip ?? "",
+    numlock: Number(cfg.numberOfLocks) ?? "",
+    project_cart: propertyInfo.projectId ?? "",
+    remarks: cfg.remarks,
+    side_panel: cfg.sidePanel ?? "",
+    selected_aluminium_door_type: cfg.aluminiumDoorFinishing ?? "",
+    discount_rate: 0,
+    type: typeId,
+  });
+
+  async function handleConfirmAdd() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await api.cart.add({ ...cartPayload(), room: selectedRoomId ?? "" });
+      handleAddProductToCart(
+        selectedProductName,
+        selectedRoomId,
+        selectedRoom,
+        PRODUCT_GALLERY_IMAGES[0],
+        cfg as any,
+      );
+      setSelectedProductConfig(undefined);
+      setShowSuccessMessage(true);
+      setShowCartModal(false);
+      setCurrentPage("roomSelection");
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+    } finally {
+      setSaving(false);
+    }
   }
 
   useEffect(() => {
@@ -406,40 +418,29 @@ export default function ProductDetailsPage() {
       .then((res) => setAvailableRooms(res.response.results ?? []))
       .catch(console.error);
   }, [propertyInfo?.projectId]);
-  function doAddToCart(roomId: string, roomName: string) {
-    api.cart.add({
-      aluminium_frame_color: cfg.aluminiumFrameColor ?? "",
-      blum_runner_upgrade: cfg.blumRunnerUpgrade ?? "",
-      cost: prices?.original,
-      door_type: cfg.doorOption ?? "",
-      drawer_lock: cfg.addLock ?? "",
-      external_color: cfg.externalColor ?? "",
-      handle_color: cfg.handleColor ?? "",
-      handle_design: cfg.handleDesign ?? "",
-      internal_color: cfg.internalColor ?? "",
-      item: cfg.width_id ?? "",
-      led_light: cfg.ledStrip ?? "",
-      numlock: Number(cfg.numberOfLocks) ?? "",
-      project_cart: propertyInfo.projectId ?? "",
-      remarks: cfg.remarks,
-      room: roomId,
-      side_panel: cfg.sidePanel ?? "",
-      selected_aluminium_door_type: cfg.aluminiumDoorFinishing ?? "",
-      discount_rate: 0,
-      type: typeId,
-    });
-    handleAddProductToCart(
-      selectedProductName,
-      roomId,
-      roomName,
-      PRODUCT_GALLERY_IMAGES[0],
-      cfg as any,
-    );
-    setSelectedProductConfig(undefined);
-    setShowSuccessMessage(true);
-    setShowCartModal(false);
-    setShowRoomPicker(false);
-    navigateTo("cart", true); // ← go straight to cart after adding
+
+  async function doAddToCart(roomId: string, roomName: string) {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await api.cart.add({ ...cartPayload(), room: roomId });
+      handleAddProductToCart(
+        selectedProductName,
+        roomId,
+        roomName,
+        PRODUCT_GALLERY_IMAGES[0],
+        cfg as any,
+      );
+      setSelectedProductConfig(undefined);
+      setShowSuccessMessage(true);
+      setShowCartModal(false);
+      setShowRoomPicker(false);
+      navigateTo("cart", true);
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+    } finally {
+      setSaving(false);
+    }
   }
   function handleRoomSelect(roomId: string, roomName: string) {
     setSelectedRoomId(roomId);
@@ -1446,6 +1447,7 @@ export default function ProductDetailsPage() {
           onConfirm={handleConfirmAdd}
           onChangeRoom={() => setShowRoomPicker(true)}
           onClose={() => setShowCartModal(false)}
+          disabled={saving}
         />
       )}
       {showRoomPicker && (

@@ -293,12 +293,12 @@ export const api = {
     updateOrderStatus: (
       orderId: string,
       status: string,
-      siteVisitDate?: string,
+      extraData?: Record<string, string>,
     ) =>
       request<void>("POST", "/update-order-status", {
         order_id: orderId,
         status,
-        ...(siteVisitDate ? { site_visit_date: siteVisitDate } : {}),
+        ...extraData,
       }),
 
     listUsers: () => dataGet<{ response: BubbleList<any> }>("/get_all_users"),

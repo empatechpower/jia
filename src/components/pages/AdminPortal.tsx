@@ -10,6 +10,7 @@ interface BubbleOrder {
   orderNo: string;
   invoiceNumber: string;
   fullName: string;
+  total?: number;
   email: string;
   phone: string;
   paidStatus?: string;
@@ -30,6 +31,23 @@ interface BubbleOrder {
   doNumber?: string;
   imageLibrary?: string[];
   siteVisitDate?: string;
+  inspector_name?: string;
+  inspection_date?: string;
+  site_visit_photos?: string;
+  signed_do?: string;
+  completion_photos?: string;
+  corrected_address?: string;
+}
+
+interface StatusTransitionData {
+  siteVisitDate?: string;
+  addressVerified?: boolean;
+  correctedAddress?: string;
+  siteVisitPhotos?: string[];
+  inspectorName?: string;
+  inspectionDate?: string;
+  signedDO?: string[];
+  completionPhotos?: string[];
 }
 
 interface BubbleUser {
@@ -629,20 +647,69 @@ function OrderItems({ order }: { order: BubbleOrder }) {
 function ConfirmStatusModal({
   currentStatus,
   newStatus,
-  siteVisitDate,
-  onSiteVisitDateChange,
+  order,
   onConfirm,
   onCancel,
 }: {
   currentStatus: string;
   newStatus: string;
-  siteVisitDate?: string;
-  onSiteVisitDateChange?: (date: string) => void;
-  onConfirm: () => void;
+  order: BubbleOrder;
+  onConfirm: (data: StatusTransitionData) => void;
   onCancel: () => void;
 }) {
-  const isSiteVisit = newStatus === "Site Visit";
-  const confirmDisabled = isSiteVisit && !siteVisitDate;
+  const [siteVisitDate, setSiteVisitDate] = useState("");
+  const [addressVerified, setAddressVerified] = useState(false);
+  const [correctedAddress, setCorrectedAddress] = useState("");
+  const [siteVisitPhotos, setSiteVisitPhotos] = useState<string[]>([]);
+  const [uploadingSVP, setUploadingSVP] = useState(false);
+  const [inspectorName, setInspectorName] = useState("");
+  const [inspectionDate, setInspectionDate] = useState("");
+  const [signedDO, setSignedDO] = useState<string[]>([]);
+  const [uploadingDO, setUploadingDO] = useState(false);
+  const [completionPhotos, setCompletionPhotos] = useState<string[]>([]);
+  const [uploadingCP, setUploadingCP] = useState(false);
+
+  const toSiteVisit = newStatus === "Site Visit";
+  const toFabricating = newStatus === "Fabricating";
+  const toDelivering = newStatus === "Delivering";
+  const toCompleted = newStatus === "Completed";
+  const anyUploading = uploadingSVP || uploadingDO || uploadingCP;
+
+  let canConfirm = true;
+  if (toSiteVisit) canConfirm = !!siteVisitDate && addressVerified;
+  if (toFabricating) canConfirm = siteVisitPhotos.length > 0;
+  if (toDelivering) canConfirm = inspectorName.trim().length > 0 && !!inspectionDate;
+  if (toCompleted) canConfirm = signedDO.length > 0 && completionPhotos.length > 0;
+
+  async function handleUpload(
+    files: File[],
+    current: string[],
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    setUploading: React.Dispatch<React.SetStateAction<boolean>>,
+  ) {
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of files) {
+        const err = validateFile(file);
+        if (err) { console.error(err); continue; }
+        const res = await uploadFile(file);
+        if (res.secure_url) uploaded.push(res.secure_url);
+      }
+      setter([...current, ...uploaded]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const deliveryAddress = order.homeUnit
+    ? `${order.homeUnit}, ${order.homeZipCode}`
+    : order.homeZipCode || "Not provided";
+
+  const today = new Date().toISOString().split("T")[0];
 
   return (
     <div
@@ -650,59 +717,212 @@ function ConfirmStatusModal({
       onClick={onCancel}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl"
+        className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
-          <svg
-            className="w-6 h-6 text-amber-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-            />
+          <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
           </svg>
         </div>
         <div className="text-center">
-          <h3 className="font-['Poppins'] font-bold text-lg text-[#1C1B1F]">
-            Update Order Status?
-          </h3>
+          <h3 className="font-['Poppins'] font-bold text-lg text-[#1C1B1F]">Update Order Status?</h3>
           <p className="font-['Poppins'] text-sm text-[#666] mt-1">
-            Change from{" "}
-            <span className="font-semibold text-[#1C1B1F]">
-              {currentStatus}
-            </span>{" "}
-            to <span className="font-semibold text-[#1C1B1F]">{newStatus}</span>
-            ?
+            Change from <span className="font-semibold text-[#1C1B1F]">{currentStatus}</span> to{" "}
+            <span className="font-semibold text-[#1C1B1F]">{newStatus}</span>?
           </p>
         </div>
-        {isSiteVisit && (
-          <div className="space-y-1.5">
-            <label className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">
-              Site Visit Date <span className="text-red-500">*</span>
+
+        {/* ── Confirmed → Site Visit ─────────────────────── */}
+        {toSiteVisit && (
+          <>
+            <div className="space-y-1.5">
+              <label className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">
+                Site Visit Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                min={today}
+                value={siteVisitDate}
+                onChange={(e) => setSiteVisitDate(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 font-['Poppins'] text-sm text-[#1C1B1F] outline-none focus:ring-2 focus:ring-[#1C1B1F]"
+              />
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="font-['Poppins'] text-[10px] text-[#888] uppercase tracking-wider mb-1">Current Delivery Address</p>
+              <p className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">{deliveryAddress}</p>
+            </div>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={addressVerified}
+                onChange={(e) => setAddressVerified(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 accent-[#1C1B1F]"
+              />
+              <span className="font-['Poppins'] text-sm text-[#1C1B1F]">
+                I confirm the client's delivery address has been verified and is correct{" "}
+                <span className="text-red-500">*</span>
+              </span>
             </label>
-            <input
-              type="date"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 font-['Poppins'] text-sm text-[#1C1B1F] outline-none focus:ring-2 focus:ring-[#1C1B1F]"
-              value={siteVisitDate ?? ""}
-              min={new Date().toISOString().split("T")[0]}
-              onChange={(e) => onSiteVisitDateChange?.(e.target.value)}
-            />
-            <p className="font-['Poppins'] text-xs text-[#888]">
-              Select the date for the site visit appointment.
-            </p>
+            <div className="space-y-1.5">
+              <label className="font-['Poppins'] text-sm text-[#555]">
+                Corrected Address{" "}
+                <span className="font-normal text-xs text-[#888]">(fill in if address above is incorrect)</span>
+              </label>
+              <input
+                type="text"
+                value={correctedAddress}
+                onChange={(e) => setCorrectedAddress(e.target.value)}
+                placeholder="Enter correct delivery address"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 font-['Poppins'] text-sm text-[#1C1B1F] outline-none focus:ring-2 focus:ring-[#1C1B1F]"
+              />
+            </div>
+          </>
+        )}
+
+        {/* ── Site Visit → Fabricating ───────────────────── */}
+        {toFabricating && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">
+                Site Visit Photos <span className="text-red-500">*</span>
+              </label>
+              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-['Poppins'] text-xs font-medium cursor-pointer transition ${uploadingSVP ? "bg-gray-100 text-gray-400 pointer-events-none" : "bg-[#1C1B1F] text-white hover:bg-[#333]"}`}>
+                {uploadingSVP ? "Uploading…" : "Upload Photos"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  disabled={uploadingSVP}
+                  onChange={(e) => handleUpload(Array.from(e.target.files ?? []), siteVisitPhotos, setSiteVisitPhotos, setUploadingSVP)}
+                />
+              </label>
+            </div>
+            <p className="font-['Poppins'] text-xs text-[#888]">Upload at least 1 photo from the site visit.</p>
+            {siteVisitPhotos.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-1">
+                {siteVisitPhotos.map((url, i) => (
+                  <div key={i} className="relative group">
+                    <img src={url.startsWith("//") ? `https:${url}` : url} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                    <button
+                      type="button"
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                      onClick={() => setSiteVisitPhotos(siteVisitPhotos.filter((_, j) => j !== i))}
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
+
+        {/* ── Fabricating → Delivering ───────────────────── */}
+        {toDelivering && (
+          <>
+            <div className="space-y-1.5">
+              <label className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">
+                Inspector's Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={inspectorName}
+                onChange={(e) => setInspectorName(e.target.value)}
+                placeholder="Enter inspector's full name"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 font-['Poppins'] text-sm text-[#1C1B1F] outline-none focus:ring-2 focus:ring-[#1C1B1F]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">
+                Inspection Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={inspectionDate}
+                onChange={(e) => setInspectionDate(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 font-['Poppins'] text-sm text-[#1C1B1F] outline-none focus:ring-2 focus:ring-[#1C1B1F]"
+              />
+            </div>
+          </>
+        )}
+
+        {/* ── Delivering → Completed ─────────────────────── */}
+        {toCompleted && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">
+                  Client Signed DO <span className="text-red-500">*</span>
+                </label>
+                <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-['Poppins'] text-xs font-medium cursor-pointer transition ${uploadingDO ? "bg-gray-100 text-gray-400 pointer-events-none" : "bg-[#1C1B1F] text-white hover:bg-[#333]"}`}>
+                  {uploadingDO ? "Uploading…" : "Upload"}
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    multiple
+                    className="hidden"
+                    disabled={uploadingDO}
+                    onChange={(e) => handleUpload(Array.from(e.target.files ?? []), signedDO, setSignedDO, setUploadingDO)}
+                  />
+                </label>
+              </div>
+              <p className="font-['Poppins'] text-xs text-[#888]">Upload the signed delivery order document.</p>
+              {signedDO.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {signedDO.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <img src={url.startsWith("//") ? `https:${url}` : url} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                      <button
+                        type="button"
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                        onClick={() => setSignedDO(signedDO.filter((_, j) => j !== i))}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-['Poppins'] text-sm font-semibold text-[#1C1B1F]">
+                  Completed Installation Photos <span className="text-red-500">*</span>
+                </label>
+                <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-['Poppins'] text-xs font-medium cursor-pointer transition ${uploadingCP ? "bg-gray-100 text-gray-400 pointer-events-none" : "bg-[#1C1B1F] text-white hover:bg-[#333]"}`}>
+                  {uploadingCP ? "Uploading…" : "Upload Photos"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    disabled={uploadingCP}
+                    onChange={(e) => handleUpload(Array.from(e.target.files ?? []), completionPhotos, setCompletionPhotos, setUploadingCP)}
+                  />
+                </label>
+              </div>
+              <p className="font-['Poppins'] text-xs text-[#888]">Upload completed installation photos.</p>
+              {completionPhotos.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {completionPhotos.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <img src={url.startsWith("//") ? `https:${url}` : url} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                      <button
+                        type="button"
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                        onClick={() => setCompletionPhotos(completionPhotos.filter((_, j) => j !== i))}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
         <div className="flex flex-col gap-2 pt-1">
           <button
             className="w-full bg-[#1C1B1F] hover:bg-[#333] active:scale-95 transition py-3 rounded-xl font-['Poppins'] font-semibold text-base text-white disabled:opacity-40 disabled:cursor-not-allowed"
-            disabled={confirmDisabled}
-            onClick={onConfirm}
+            disabled={!canConfirm || anyUploading}
+            onClick={() => onConfirm({ siteVisitDate, addressVerified, correctedAddress, siteVisitPhotos, inspectorName, inspectionDate, signedDO, completionPhotos })}
           >
             Yes, Update Status
           </button>
@@ -1006,13 +1226,16 @@ function OrderDetailPanel({
 }: {
   order: BubbleOrder;
   onBack: () => void;
-  onStatusChange: (id: string, status: string, siteVisitDate?: string) => Promise<void>;
+  onStatusChange: (
+    id: string,
+    status: string,
+    data?: StatusTransitionData,
+  ) => Promise<void>;
   salespersons?: BubbleSalesperson[];
   isAdmin?: boolean;
 }) {
   const [updating, setUpdating] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
-  const [siteVisitDate, setSiteVisitDate] = useState("");
   const [assignedList, setAssignedList] = useState<string[]>(
     order.assignedToList ?? (order.assignedTo ? [order.assignedTo] : []),
   );
@@ -1034,16 +1257,23 @@ function OrderDetailPanel({
     if (invoiceRooms.length > 0) return;
     setLoadingInvoice(true);
     try {
-      const [cartRes, roomRes, colorRes, handleRes, alumRes, typeRes, productRes] =
-        await Promise.all([
-          api.cart.list(order._id),
-          api.rooms.listByProject(order._id),
-          api.portfolio.laminate_color(),
-          api.products.get_handle_design(),
-          api.products.get_aluminium_finishing(),
-          api.series.list(),
-          api.products.get_all_products(),
-        ]);
+      const [
+        cartRes,
+        roomRes,
+        colorRes,
+        handleRes,
+        alumRes,
+        typeRes,
+        productRes,
+      ] = await Promise.all([
+        api.cart.list(order._id),
+        api.rooms.listByProject(order._id),
+        api.portfolio.laminate_color(),
+        api.products.get_handle_design(),
+        api.products.get_aluminium_finishing(),
+        api.series.list(),
+        api.products.get_all_products(),
+      ]);
 
       const cartItems: any[] = cartRes.response.results ?? [];
       const cartRooms: any[] = roomRes.response.results ?? [];
@@ -1056,10 +1286,18 @@ function OrderDetailPanel({
       const cartItemIdSet = new Set(cartItems.map((p: any) => p._id));
       const typeMap = Object.fromEntries(typeList.map((t: any) => [t._id, t]));
       const colorMap = Object.fromEntries(colors.map((c: any) => [c._id, c]));
-      const handleMap = Object.fromEntries(handleDesigns.map((h: any) => [h._id, h]));
-      const finishMap = Object.fromEntries(aluminium.map((a: any) => [a._id, a]));
-      const productMap = Object.fromEntries(cartItems.map((p: any) => [p._id, p]));
-      const pricingMap = Object.fromEntries(productList.map((p: any) => [p._id, p]));
+      const handleMap = Object.fromEntries(
+        handleDesigns.map((h: any) => [h._id, h]),
+      );
+      const finishMap = Object.fromEntries(
+        aluminium.map((a: any) => [a._id, a]),
+      );
+      const productMap = Object.fromEntries(
+        cartItems.map((p: any) => [p._id, p]),
+      );
+      const pricingMap = Object.fromEntries(
+        productList.map((p: any) => [p._id, p]),
+      );
       const smallWidths = ["L400mm", "L450mm", "L500mm"];
 
       const resolved = cartRooms
@@ -1083,20 +1321,24 @@ function OrderDetailPanel({
                 cost: p.cost ?? 0,
                 sketchImage,
                 internal_color: p.internal_color ?? null,
-                laminate_color: colorMap[p.external_color]?.colorDisplayName ?? null,
+                laminate_color:
+                  colorMap[p.external_color]?.colorDisplayName ?? null,
                 led_light_text: p.led_light_text ?? null,
                 width: pricing?.length ?? null,
                 door_type: p.door_type ?? null,
                 side_panel_text: p.side_panel_text ?? null,
                 handle_design: handleMap[p.handle_design_text]?.name ?? null,
-                door_finishing: finishMap[p.selected_aluminium_doorType]?.name ?? null,
+                door_finishing:
+                  finishMap[p.selected_aluminium_doorType]?.name ?? null,
               };
             });
           return {
             id: room._id,
             name: room.name,
             products,
-            sketchImages: products.map((p: any) => p.sketchImage).filter(Boolean),
+            sketchImages: products
+              .map((p: any) => p.sketchImage)
+              .filter(Boolean),
           };
         })
         .filter((r: any) => r.products.length > 0);
@@ -1131,12 +1373,11 @@ function OrderDetailPanel({
   const [resending, setResending] = useState(false);
   const [showImageLib, setShowImageLib] = useState(false);
 
-  async function handle(status: string) {
+  async function handle(data: StatusTransitionData) {
     setUpdating(true);
-    await onStatusChange(order._id, status, status === "Site Visit" ? siteVisitDate : undefined);
+    await onStatusChange(order._id, pendingStatus!, data);
     setUpdating(false);
     setPendingStatus(null);
-    setSiteVisitDate("");
   }
 
   async function handleAssign() {
@@ -1205,7 +1446,6 @@ function OrderDetailPanel({
     "Site Visit",
     "Fabricating",
     "Delivering",
-    "Installation",
     "Completed",
   ];
 
@@ -1496,14 +1736,103 @@ function OrderDetailPanel({
         </div>
       </div>
 
+      {/* Photos & Documents */}
+      {(() => {
+        const parseUrls = (v: string[] | string | undefined) =>
+          Array.isArray(v) ? v : (v as string | undefined)?.split(",").filter(Boolean) ?? [];
+        const svPhotos = parseUrls(order.site_visit_photos);
+        const doFiles  = parseUrls(order.signed_do);
+        const cpPhotos = parseUrls(order.completion_photos);
+        const hasAny = order.siteVisitDate || svPhotos.length || order.inspector_name || order.inspection_date || doFiles.length || cpPhotos.length;
+        if (!hasAny) return null;
+
+        function PhotoGrid({ urls }: { urls: string[] }) {
+          return (
+            <div className="grid grid-cols-4 gap-2">
+              {urls.map((url, i) => {
+                const src = url.startsWith("//") ? `https:${url}` : url;
+                return (
+                  <a key={i} href={src} target="_blank" rel="noreferrer" className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 transition block">
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                  </a>
+                );
+              })}
+            </div>
+          );
+        }
+
+        return (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-5">
+            <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">Photos & Documents</p>
+
+            {(order.siteVisitDate || svPhotos.length > 0) && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  <p className="font-['Poppins'] text-xs font-semibold text-[#555] uppercase tracking-wider">Site Visit</p>
+                </div>
+                {order.siteVisitDate && (
+                  <p className="font-['Poppins'] text-sm text-[#555]">
+                    Date: <span className="font-semibold text-[#1C1B1F]">{formatDate(order.siteVisitDate)}</span>
+                  </p>
+                )}
+                {svPhotos.length > 0 && <PhotoGrid urls={svPhotos} />}
+              </div>
+            )}
+
+            {(order.inspector_name || order.inspection_date) && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                  <p className="font-['Poppins'] text-xs font-semibold text-[#555] uppercase tracking-wider">Pre-Delivery Inspection</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {order.inspector_name && (
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="font-['Poppins'] text-[10px] text-[#888] uppercase tracking-wider mb-1">Inspector</p>
+                      <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">{order.inspector_name}</p>
+                    </div>
+                  )}
+                  {order.inspection_date && (
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="font-['Poppins'] text-[10px] text-[#888] uppercase tracking-wider mb-1">Inspection Date</p>
+                      <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">{formatDate(order.inspection_date)}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {doFiles.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <p className="font-['Poppins'] text-xs font-semibold text-[#555] uppercase tracking-wider">Signed Delivery Order</p>
+                </div>
+                <PhotoGrid urls={doFiles} />
+              </div>
+            )}
+
+            {cpPhotos.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  <p className="font-['Poppins'] text-xs font-semibold text-[#555] uppercase tracking-wider">Completed Installation</p>
+                </div>
+                <PhotoGrid urls={cpPhotos} />
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {pendingStatus && (
         <ConfirmStatusModal
           currentStatus={order.paidStatus as string}
           newStatus={pendingStatus}
-          siteVisitDate={siteVisitDate}
-          onSiteVisitDateChange={setSiteVisitDate}
-          onConfirm={() => handle(pendingStatus)}
-          onCancel={() => { setPendingStatus(null); setSiteVisitDate(""); }}
+          order={order}
+          onConfirm={handle}
+          onCancel={() => setPendingStatus(null)}
         />
       )}
 
@@ -1943,29 +2272,49 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
   const [roleValue, setRoleValue] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("all");
 
+  async function fetchOrders() {
+    const [o, u] = await Promise.all([api.admin.listOrders(), api.admin.listUsers()]);
+    const allUsers = u?.response?.results ?? [];
+    const results: BubbleOrder[] = o?.response?.results ?? [];
+    setOrders(results);
+    setUsers(allUsers);
+    setSalespersons(allUsers.filter((u: any) => u.userRole === "salesperson" || u.userRole === "admin"));
+    return results;
+  }
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([api.admin.listOrders(), api.admin.listUsers()])
-      .then(([o, u]) => {
-        const allUsers = u?.response?.results ?? [];
-        setOrders(o?.response?.results ?? []);
-        setUsers(allUsers);
-        setSalespersons(
-          allUsers.filter(
-            (u: any) => u.userRole === "salesperson" || u.userRole === "admin",
-          ),
-        );
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    fetchOrders().catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  async function handleStatusChange(id: string, status: string, siteVisitDate?: string) {
-    await api.admin.updateOrderStatus(id, status, siteVisitDate);
-    setOrders((p) =>
-      p.map((o) => (o._id === id ? { ...o, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : o)),
-    );
-    setSelectedOrder((p) => (p ? { ...p, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : null));
+  async function handleStatusChange(
+    id: string,
+    status: string,
+    data?: StatusTransitionData,
+  ) {
+    const extraData: Record<string, string> = {};
+    if (data?.siteVisitDate) extraData.site_visit_date = data.siteVisitDate;
+    if (data?.correctedAddress) extraData.corrected_address = data.correctedAddress;
+    if (data?.siteVisitPhotos?.length) extraData.site_visit_photos = data.siteVisitPhotos.join(",");
+    if (data?.inspectorName) extraData.inspector_name = data.inspectorName;
+    if (data?.inspectionDate) extraData.inspection_date = data.inspectionDate;
+    if (data?.signedDO?.length) extraData.signed_do = data.signedDO.join(",");
+    if (data?.completionPhotos?.length) extraData.completion_photos = data.completionPhotos.join(",");
+    await api.admin.updateOrderStatus(id, status, extraData);
+    const fresh = await fetchOrders();
+    const freshOrder = fresh.find((o) => o._id === id);
+    if (freshOrder) {
+      setSelectedOrder((prev) => ({
+        ...freshOrder,
+        site_visit_photos: freshOrder.site_visit_photos || prev?.site_visit_photos,
+        inspector_name:    freshOrder.inspector_name    || prev?.inspector_name,
+        inspection_date:   freshOrder.inspection_date   || prev?.inspection_date,
+        signed_do:         freshOrder.signed_do         || prev?.signed_do,
+        completion_photos: freshOrder.completion_photos || prev?.completion_photos,
+        corrected_address: freshOrder.corrected_address || prev?.corrected_address,
+        siteVisitDate:     freshOrder.siteVisitDate     || prev?.siteVisitDate,
+      }));
+    }
   }
 
   async function handleAssignRole(userId: string, role: string) {
@@ -2109,7 +2458,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                             />
                             <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F]">
                               $
-                              {order.paidAmount?.toLocaleString("en-SG", {
+                              {order?.total?.toLocaleString("en-SG", {
                                 minimumFractionDigits: 2,
                               })}
                             </p>
@@ -2158,7 +2507,6 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                         <option value="Site Visit">Site Visit</option>
                         <option value="Fabricating">Fabricating</option>
                         <option value="Delivering">Delivering</option>
-                        <option value="Installation">Installation</option>
                         <option value="Completed">Completed</option>
                       </select>
                     </div>
@@ -2201,7 +2549,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                               </td>
                               <td className="px-5 py-3.5 font-['Poppins'] font-semibold text-sm text-[#1C1B1F] whitespace-nowrap">
                                 $
-                                {order.paidAmount?.toLocaleString("en-SG", {
+                                {order.total?.toLocaleString("en-SG", {
                                   minimumFractionDigits: 2,
                                 })}
                               </td>
@@ -2210,7 +2558,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                               </td>
                               <td className="px-5 py-3.5">
                                 <StatusBadge
-                                  status={(order.paidStatus as string) || ""}
+                                  status={order.paidStatus || order.status}
                                 />
                               </td>
                               <td className="px-5 py-3.5">
@@ -2242,7 +2590,14 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                     <h2 className="font-['Poppins'] font-semibold text-base text-[#1C1B1F]">
                       Registered Users{" "}
                       <span className="text-[#888] font-normal">
-                        ({userRoleFilter === "all" ? users.length : users.filter((u) => (u.userRole || "customer") === userRoleFilter).length})
+                        (
+                        {userRoleFilter === "all"
+                          ? users.length
+                          : users.filter(
+                              (u) =>
+                                (u.userRole || "customer") === userRoleFilter,
+                            ).length}
+                        )
                       </span>
                     </h2>
                     <div className="flex items-center gap-3">
@@ -2284,113 +2639,125 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {users.filter((u) => userRoleFilter === "all" || (u.userRole || "customer") === userRoleFilter).map((user) => {
-                          const name = user.FirstName
-                            ? `${user.FirstName} ${user.LastName || ""}`.trim()
-                            : "—";
-                          const email =
-                            user.authentication?.email?.email ||
-                            user.email ||
-                            "—";
-                          const isAssigning = assigningRole === user._id;
-                          return (
-                            <tr
-                              key={user._id}
-                              className="hover:bg-gray-50 transition"
-                            >
-                              <td className="px-5 py-3.5">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-[#1C1B1F] flex items-center justify-center shrink-0">
-                                    <span className="text-white text-xs font-bold">
-                                      {name[0]?.toUpperCase() ||
-                                        email[0]?.toUpperCase() ||
-                                        "?"}
+                        {users
+                          .filter(
+                            (u) =>
+                              userRoleFilter === "all" ||
+                              (u.userRole || "customer") === userRoleFilter,
+                          )
+                          .map((user) => {
+                            const name = user.FirstName
+                              ? `${user.FirstName} ${user.LastName || ""}`.trim()
+                              : "—";
+                            const email =
+                              user.authentication?.email?.email ||
+                              user.email ||
+                              "—";
+                            const isAssigning = assigningRole === user._id;
+                            return (
+                              <tr
+                                key={user._id}
+                                className="hover:bg-gray-50 transition"
+                              >
+                                <td className="px-5 py-3.5">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-[#1C1B1F] flex items-center justify-center shrink-0">
+                                      <span className="text-white text-xs font-bold">
+                                        {name[0]?.toUpperCase() ||
+                                          email[0]?.toUpperCase() ||
+                                          "?"}
+                                      </span>
+                                    </div>
+                                    <span className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
+                                      {name}
                                     </span>
                                   </div>
-                                  <span className="font-['Poppins'] font-medium text-sm text-[#1C1B1F]">
-                                    {name}
+                                </td>
+                                <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888]">
+                                  {email}
+                                </td>
+                                <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888]">
+                                  {user.ContactNumber || user.phone || "—"}
+                                </td>
+                                <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888] whitespace-nowrap">
+                                  {formatDate(user["Created Date"])}
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <span
+                                    className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
+                                      user.userRole === "admin"
+                                        ? "bg-purple-100 text-purple-700"
+                                        : user.userRole === "salesperson"
+                                          ? "bg-blue-100 text-blue-700"
+                                          : user.userRole === "vendor"
+                                            ? "bg-amber-100 text-amber-700"
+                                            : "bg-gray-100 text-gray-500"
+                                    }`}
+                                  >
+                                    {user.userRole || "Customer"}
                                   </span>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888]">
-                                {email}
-                              </td>
-                              <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888]">
-                                {user.ContactNumber || user.phone || "—"}
-                              </td>
-                              <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888] whitespace-nowrap">
-                                {formatDate(user["Created Date"])}
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <span
-                                  className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
-                                    user.userRole === "admin"
-                                      ? "bg-purple-100 text-purple-700"
-                                      : user.userRole === "salesperson"
-                                        ? "bg-blue-100 text-blue-700"
-                                        : user.userRole === "vendor"
-                                          ? "bg-amber-100 text-amber-700"
-                                          : "bg-gray-100 text-gray-500"
-                                  }`}
-                                >
-                                  {user.userRole || "Customer"}
-                                </span>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                {isAssigning ? (
-                                  <div className="flex items-center gap-2">
-                                    <select
-                                      className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-['Poppins'] text-xs text-[#1C1B1F] outline-none"
-                                      value={roleValue}
-                                      onChange={(e) =>
-                                        setRoleValue(e.target.value)
-                                      }
-                                    >
-                                      <option value="">Select role</option>
-                                      <option value="admin">Admin</option>
-                                      <option value="salesperson">
-                                        Salesperson
-                                      </option>
-                                      <option value="vendor">Vendor</option>
-                                      <option value="customer">Customer</option>
-                                    </select>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  {isAssigning ? (
+                                    <div className="flex items-center gap-2">
+                                      <select
+                                        className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 font-['Poppins'] text-xs text-[#1C1B1F] outline-none"
+                                        value={roleValue}
+                                        onChange={(e) =>
+                                          setRoleValue(e.target.value)
+                                        }
+                                      >
+                                        <option value="">Select role</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="salesperson">
+                                          Salesperson
+                                        </option>
+                                        <option value="vendor">Vendor</option>
+                                        <option value="customer">
+                                          Customer
+                                        </option>
+                                      </select>
+                                      <button
+                                        className="px-2.5 py-1.5 bg-[#1C1B1F] text-white rounded-lg font-['Poppins'] text-xs hover:bg-[#333] transition disabled:opacity-50"
+                                        disabled={!roleValue}
+                                        onClick={() =>
+                                          handleAssignRole(user._id, roleValue)
+                                        }
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        className="px-2.5 py-1.5 border border-gray-200 rounded-lg font-['Poppins'] text-xs hover:bg-gray-50 transition"
+                                        onClick={() => {
+                                          setAssigningRole(null);
+                                          setRoleValue("");
+                                        }}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ) : (
                                     <button
-                                      className="px-2.5 py-1.5 bg-[#1C1B1F] text-white rounded-lg font-['Poppins'] text-xs hover:bg-[#333] transition disabled:opacity-50"
-                                      disabled={!roleValue}
-                                      onClick={() =>
-                                        handleAssignRole(user._id, roleValue)
-                                      }
-                                    >
-                                      Save
-                                    </button>
-                                    <button
-                                      className="px-2.5 py-1.5 border border-gray-200 rounded-lg font-['Poppins'] text-xs hover:bg-gray-50 transition"
+                                      className="px-3 py-1.5 border border-gray-200 text-[#555] rounded-lg font-['Poppins'] text-xs hover:border-gray-400 transition"
                                       onClick={() => {
-                                        setAssigningRole(null);
-                                        setRoleValue("");
+                                        setAssigningRole(user._id);
+                                        setRoleValue(user.role ?? "");
                                       }}
                                     >
-                                      ✕
+                                      Change Role
                                     </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    className="px-3 py-1.5 border border-gray-200 text-[#555] rounded-lg font-['Poppins'] text-xs hover:border-gray-400 transition"
-                                    onClick={() => {
-                                      setAssigningRole(user._id);
-                                      setRoleValue(user.role ?? "");
-                                    }}
-                                  >
-                                    Change Role
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
-                    {users.filter((u) => userRoleFilter === "all" || (u.userRole || "customer") === userRoleFilter).length === 0 && (
+                    {users.filter(
+                      (u) =>
+                        userRoleFilter === "all" ||
+                        (u.userRole || "customer") === userRoleFilter,
+                    ).length === 0 && (
                       <div className="py-12 text-center">
                         <p className="font-['Poppins'] text-sm text-[#bbb]">
                           No users found
@@ -2419,20 +2786,45 @@ function SalespersonDashboard({ onSignOut }: { onSignOut: () => void }) {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<BubbleOrder | null>(null);
 
+  async function fetchOrders() {
+    const r = await api.admin.listAssignedOrders();
+    const results: BubbleOrder[] = r?.response?.results ?? [];
+    setOrders(results);
+    return results;
+  }
+
   useEffect(() => {
-    api.admin
-      .listAssignedOrders()
-      .then((r) => setOrders(r?.response?.results ?? []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    fetchOrders().catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  async function handleStatusChange(id: string, status: string, siteVisitDate?: string) {
-    await api.admin.updateOrderStatus(id, status, siteVisitDate);
-    setOrders((p) =>
-      p.map((o) => (o._id === id ? { ...o, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : o)),
-    );
-    setSelectedOrder((p) => (p ? { ...p, paidStatus: status, ...(siteVisitDate ? { siteVisitDate } : {}) } : null));
+  async function handleStatusChange(
+    id: string,
+    status: string,
+    data?: StatusTransitionData,
+  ) {
+    const extraData: Record<string, string> = {};
+    if (data?.siteVisitDate) extraData.site_visit_date = data.siteVisitDate;
+    if (data?.correctedAddress) extraData.corrected_address = data.correctedAddress;
+    if (data?.siteVisitPhotos?.length) extraData.site_visit_photos = data.siteVisitPhotos.join(",");
+    if (data?.inspectorName) extraData.inspector_name = data.inspectorName;
+    if (data?.inspectionDate) extraData.inspection_date = data.inspectionDate;
+    if (data?.signedDO?.length) extraData.signed_do = data.signedDO.join(",");
+    if (data?.completionPhotos?.length) extraData.completion_photos = data.completionPhotos.join(",");
+    await api.admin.updateOrderStatus(id, status, extraData);
+    const fresh = await fetchOrders();
+    const freshOrder = fresh.find((o) => o._id === id);
+    if (freshOrder) {
+      setSelectedOrder((prev) => ({
+        ...freshOrder,
+        site_visit_photos: freshOrder.site_visit_photos || prev?.site_visit_photos,
+        inspector_name:    freshOrder.inspector_name    || prev?.inspector_name,
+        inspection_date:   freshOrder.inspection_date   || prev?.inspection_date,
+        signed_do:         freshOrder.signed_do         || prev?.signed_do,
+        completion_photos: freshOrder.completion_photos || prev?.completion_photos,
+        corrected_address: freshOrder.corrected_address || prev?.corrected_address,
+        siteVisitDate:     freshOrder.siteVisitDate     || prev?.siteVisitDate,
+      }));
+    }
   }
 
   return (
