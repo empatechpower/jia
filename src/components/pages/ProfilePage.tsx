@@ -29,6 +29,7 @@ interface Order {
   invoiceNumber: string;
   orderNo: string;
   paidAmount: number;
+  total?: number;
   status: string;
   paidOn?: string | number;
   confirmedOn?: string | number;
@@ -101,7 +102,6 @@ function Chevron({ open }: { open: boolean }) {
 }
 
 // ─── JIA Logo ─────────────────────────────────────────────────────────────────
-
 
 // ─── Expanded order detail ────────────────────────────────────────────────────
 
@@ -417,7 +417,7 @@ function OrderCard({ order }: { order: Order }) {
             )}
             <p className="font-['Poppins'] font-bold text-sm text-[#1C1B1F]">
               $
-              {order.paidAmount.toLocaleString("en-SG", {
+              {order?.total?.toLocaleString("en-SG", {
                 minimumFractionDigits: 2,
               })}
             </p>
