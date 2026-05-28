@@ -192,7 +192,7 @@ function OrderDetail({
                       Type {p.code}
                     </p>
                     <p className="font-['Poppins'] font-semibold text-sm text-[#1C1B1F] mb-1">
-                      ${p.cost.toFixed(2)}
+                      ${p?.cost?.toFixed(2)}
                     </p>
                     <div className="space-y-0.5">
                       {[
@@ -228,7 +228,7 @@ function OrderDetail({
       <div className="px-4 py-4 space-y-1.5 border-b border-gray-100">
         <div className="flex justify-between font-['Poppins'] font-semibold text-base text-[#1C1B1F] pt-1 border-t border-gray-100 mt-1">
           <span>Total payment:</span>
-          <span>${order.paidAmount.toFixed(2)}</span>
+          <span>${order?.total?.toFixed(2)}</span>
         </div>
       </div>
 
