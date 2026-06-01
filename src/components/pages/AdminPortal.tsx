@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/services/api";
 import { uploadFile, validateFile } from "@/services/cloudinary";
 import InvoicePage from "@/components/pages/InvoicePage";
+import { useApp } from "@/context/AppContext";
 
 type Role = "admin" | "salesperson" | "vendor";
 
@@ -2260,6 +2261,7 @@ function RoleSelectionPage({ onSelect }: { onSelect: (role: Role) => void }) {
 
 // ── Admin dashboard ───────────────────────────────────────────────────────────
 function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
+  const { userEmail } = useApp();
   const [activeTab, setActiveTab] = useState("overview");
   const [orders, setOrders] = useState<BubbleOrder[]>([]);
   const [users, setUsers] = useState<BubbleUser[]>([]);
@@ -2268,6 +2270,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
   const [selectedOrder, setSelectedOrder] = useState<BubbleOrder | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [installSortDir, setInstallSortDir] = useState<"asc" | "desc">("asc");
   const [assigningRole, setAssigningRole] = useState<string | null>(null);
   const [roleValue, setRoleValue] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("all");
@@ -2347,18 +2350,27 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
   const confirmed = orders.filter((o) => o.paid === true).length;
   const pending = orders.filter((o) => o.paid !== true).length;
 
-  const filteredOrders = orders.filter((o) => {
-    const q = searchTerm.toLowerCase();
-    const ms =
-      !searchTerm ||
-      o.orderNo?.toLowerCase().includes(q) ||
-      o.fullName?.toLowerCase().includes(q) ||
-      o.email?.toLowerCase().includes(q);
-    const mf =
-      filterStatus === "all" ||
-      o.paidStatus?.toLowerCase() === filterStatus.toLowerCase();
-    return ms && mf;
-  });
+  const filteredOrders = orders
+    .filter((o) => {
+      const q = searchTerm.toLowerCase();
+      const ms =
+        !searchTerm ||
+        o.orderNo?.toLowerCase().includes(q) ||
+        o.fullName?.toLowerCase().includes(q) ||
+        o.email?.toLowerCase().includes(q);
+      const mf =
+        filterStatus === "all" ||
+        o.paidStatus?.toLowerCase() === filterStatus.toLowerCase();
+      return ms && mf;
+    })
+    .sort((a, b) => {
+      const da = a.installationDate ?? 0;
+      const db = b.installationDate ?? 0;
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return installSortDir === "asc" ? da - db : db - da;
+    });
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] flex">
@@ -2390,10 +2402,12 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
           </h1>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-[#1C1B1F] flex items-center justify-center">
-              <span className="text-white text-xs font-bold">A</span>
+              <span className="text-white text-xs font-bold">
+                {userEmail.charAt(0).toUpperCase()}
+              </span>
             </div>
             <span className="font-['Poppins'] text-sm text-[#555]">
-              admin@jiaideas.com
+              {userEmail}
             </span>
           </div>
         </header>
@@ -2519,9 +2533,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                               "Customer",
                               "Email",
                               "Amount",
-                              "Date",
                               "Status",
-                              "",
                             ].map((h) => (
                               <th
                                 key={h}
@@ -2530,6 +2542,18 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                                 {h}
                               </th>
                             ))}
+                            <th
+                              className="px-5 py-3 text-left font-['Poppins'] text-xs font-semibold text-[#888] uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:text-[#1C1B1F] transition"
+                              onClick={() =>
+                                setInstallSortDir((d) =>
+                                  d === "asc" ? "desc" : "asc",
+                                )
+                              }
+                            >
+                              Installation Date{" "}
+                              {installSortDir === "asc" ? "↑" : "↓"}
+                            </th>
+                            <th className="px-5 py-3" />
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -2553,13 +2577,15 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                                   minimumFractionDigits: 2,
                                 })}
                               </td>
-                              <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888] whitespace-nowrap">
-                                {formatDate(order["Created Date"])}
-                              </td>
                               <td className="px-5 py-3.5">
                                 <StatusBadge
                                   status={order.paidStatus || order.status}
                                 />
+                              </td>
+                              <td className="px-5 py-3.5 font-['Poppins'] text-sm text-[#888] whitespace-nowrap">
+                                {order.installationDate
+                                  ? formatDate(order.installationDate)
+                                  : "—"}
                               </td>
                               <td className="px-5 py-3.5">
                                 <button
@@ -3199,8 +3225,8 @@ function VendorDashboard({ onSignOut }: { onSignOut: () => void }) {
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
-export default function AdminPortal() {
-  const [role, setRole] = useState<Role | null>(null);
+export default function AdminPortal({ initialRole }: { initialRole?: Role }) {
+  const [role, setRole] = useState<Role | null>(initialRole ?? null);
   if (!role) return <RoleSelectionPage onSelect={setRole} />;
   if (role === "admin")
     return <AdminDashboard onSignOut={() => setRole(null)} />;

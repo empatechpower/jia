@@ -31,6 +31,7 @@ interface AppState {
   // Auth
   isLoggedIn: boolean;
   userEmail: string;
+  userRole: string | null;
   handleLogin: (email: string) => void;
   handleLogout: () => void;
 
@@ -121,16 +122,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Auth
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState("user@example.com");
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("jia_token");
     const email = localStorage.getItem("jia_email");
+    const role = localStorage.getItem("jia_role");
 
     if (token && email) {
       setIsLoggedIn(true);
       setUserEmail(email);
+      if (role) setUserRole(role);
     }
   }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    api.user
+      .me()
+      .then((data: any) => {
+        const role: string | undefined =
+          data?.response?.user?.Role ?? data?.response?.user?.Role;
+        if (role) {
+          setUserRole(role);
+          localStorage.setItem("jia_role", role);
+        }
+      })
+      .catch(() => {});
+  }, [isLoggedIn]);
   const handleLogin = useCallback((email: string) => {
     setIsLoggedIn(true);
     setUserEmail(email);
@@ -139,10 +158,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleLogout = useCallback(() => {
     setIsLoggedIn(false);
+    setUserRole(null);
     setCurrentPage("landing");
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_ID_KEY);
     localStorage.removeItem("jia_email");
+    localStorage.removeItem("jia_role");
   }, []);
 
   useEffect(() => {
@@ -188,7 +209,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Cart
   const [cartItems, setCartItems] = useState<CartRoom[]>([]);
-  const cartItemCount = currentProject?.items?.length ?? 0;
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    setCartCount(currentProject?.items?.length ?? 0);
+  }, [currentProject?._id]);
 
   useEffect(() => {
     setLogoutHandler(handleLogout);
@@ -235,6 +260,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           },
         ];
       });
+      setCartCount((n) => n + 1);
     },
     [selectedArea, selectedProductId],
   );
@@ -253,6 +279,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           )
           .filter((room) => room.products.length > 0),
       );
+      setCartCount((n) => Math.max(0, n - 1));
     },
     [],
   );
@@ -266,7 +293,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const clearCart = useCallback(() => setCartItems([]), []);
+  const clearCart = useCallback(() => {
+    setCartItems([]);
+    setCartCount(0);
+  }, []);
 
   const handlePaymentSuccess = useCallback(() => {
     clearCart();
@@ -280,6 +310,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navigateTo,
     isLoggedIn,
     userEmail,
+    userRole,
     handleLogin,
     handleLogout,
     selectedArea,
@@ -311,7 +342,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSelectedProjectId,
     setShowSuccessMessage,
     cartItems,
-    cartItemCount,
+    cartItemCount: cartCount,
     handleAddProductToCart,
     handleDeleteProduct,
     handleUpdateRoomName,

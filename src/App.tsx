@@ -79,8 +79,18 @@ const PrivacyPolicyPage = lazyNamed(
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
+const ADMIN_ROLES = new Set(["admin", "salesperson", "vendor"]);
+
 function Router() {
-  const { currentPage } = useApp();
+  const { currentPage, userRole, navigateTo } = useApp();
+
+  const adminNode = (() => {
+    if (!userRole || !ADMIN_ROLES.has(userRole)) {
+      navigateTo("landing");
+      return <LandingPage />;
+    }
+    return <AdminPortal initialRole={userRole as "admin" | "salesperson" | "vendor"} />;
+  })();
 
   const routes: Partial<Record<typeof currentPage, React.ReactNode>> = {
     landing: <LandingPage />,
@@ -100,7 +110,7 @@ function Router() {
     profile: <ProfilePage />,
     terms: <TermsAndConditionsPage />,
     privacy: <PrivacyPolicyPage />,
-    admin: <AdminPortal />,
+    admin: adminNode,
     paymentSuccess: <PaymentSuccessPage />,
   };
 
